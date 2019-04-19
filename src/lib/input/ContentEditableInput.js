@@ -16,7 +16,7 @@ define([
     '../util/misc'
 ], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) {
     'use strict';
-    return class ContentEditableInput {
+    class ContentEditableInput {
         constructor(cm) {
             this.cm = cm;
             this.lastAnchorNode = this.lastAnchorOffset = this.lastFocusNode = this.lastFocusOffset = null;
@@ -109,7 +109,7 @@ define([
             n.on(div, 'copy', onCopyCut);
             n.on(div, 'cut', onCopyCut);
         }
-        b.prepareSelection() {
+        prepareSelection() {
             let result = b.prepareSelection(this.cm, false);
             result.focus = this.cm.state.focused;
             return result;
@@ -435,11 +435,11 @@ define([
                     addText(cmText);
                     return;
                 }
-                let markerID = node.getAttribute('cm-marker'), m.range;
+                let markerID = node.getAttribute('cm-marker'), range;
                 if (markerID) {
                     let found = cm.findMarks(e.Pos(fromLine, 0), e.Pos(toLine + 1, 0), recognizeMarker(+markerID));
-                    if (found.length && (m.range = found[0].find(0)))
-                        addText(f.getBetween(cm.doc, m.range.from, m.range.to).join(lineSep));
+                    if (found.length && (range = found[0].find(0)))
+                        addText(f.getBetween(cm.doc, range.from, range.to).join(lineSep));
                     return;
                 }
                 if (node.getAttribute('contenteditable') == 'false')
@@ -545,4 +545,6 @@ define([
                 dist += before.textContent.length;
         }
     }
+
+    return ContentEditableInput;
 });

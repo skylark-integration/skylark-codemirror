@@ -85,7 +85,7 @@ define([
                     }
                 }
             }),
-            g.indentLine: m.methodOp(function (n, dir, aggressive) {
+            indentLine: m.methodOp(function (n, dir, aggressive) {
                 if (typeof dir != 'string' && typeof dir != 'number') {
                     if (dir == null)
                         dir = this.options.smartIndent ? 'smart' : 'prev';
@@ -184,7 +184,7 @@ define([
                 line = n.clipLine(doc, line == null ? doc.first + doc.size - 1 : line);
                 return f.getContextBefore(this, line + 1, precise).state;
             },
-            o.cursorCoords: function (start, mode) {
+            cursorCoords: function (start, mode) {
                 let pos, range = this.doc.sel.primary();
                 if (start == null)
                     pos = range.head;
@@ -194,21 +194,21 @@ define([
                     pos = start ? range.from() : range.to();
                 return o.cursorCoords(this, pos, mode || 'page');
             },
-            o.charCoords: function (pos, mode) {
+            charCoords: function (pos, mode) {
                 return o.charCoords(this, n.clipPos(this.doc, pos), mode || 'page');
             },
-            o.coordsChar: function (coords, mode) {
+            coordsChar: function (coords, mode) {
                 coords = o.fromCoordSystem(this, coords, mode || 'page');
                 return o.coordsChar(this, coords.left, coords.top);
             },
-            w.lineAtHeight: function (height, mode) {
+            lineAtHeight: function (height, mode) {
                 height = o.fromCoordSystem(this, {
                     top: height,
                     left: 0
                 }, mode || 'page').top;
                 return w.lineAtHeight(this.doc, height + this.display.viewOffset);
             },
-            s.heightAtLine: function (line, mode, includeWidgets) {
+            heightAtLine: function (line, mode, includeWidgets) {
                 let end = false, lineObj;
                 if (typeof line == 'number') {
                     let last = this.doc.first + this.doc.size - 1;
@@ -286,7 +286,7 @@ define([
                 if (b.commands.hasOwnProperty(cmd))
                     return b.commands[cmd].call(null, this);
             },
-            h.triggerElectric: m.methodOp(function (text) {
+            triggerElectric: m.methodOp(function (text) {
                 h.triggerElectric(this, text);
             }),
             findPosH: function (from, amount, unit, visually) {
@@ -412,7 +412,7 @@ define([
                     clientWidth: o.displayWidth(this)
                 };
             },
-            r.scrollIntoView: m.methodOp(function (range, margin) {
+            scrollIntoView: m.methodOp(function (range, margin) {
                 if (range == null) {
                     range = {
                         from: this.doc.sel.primary().head,
@@ -461,13 +461,13 @@ define([
                 this.curOp.forceUpdate = true;
                 e.signal(this, 'refresh', this);
             }),
-            m.operation: function (f) {
+            operation: function (f) {
                 return m.runInOp(this, f);
             },
-            m.startOperation: function () {
+            startOperation: function () {
                 return m.startOperation(this);
             },
-            m.endOperation: function () {
+            endOperation: function () {
                 return m.endOperation(this);
             },
             refresh: m.methodOp(function () {

@@ -25,7 +25,7 @@ define([
     './options'
 ], function (a, b, c, d, e, f, g, h, i, j, k, Doc, l, m, n, o, p, q, r, s, t, u, v, w) {
     'use strict';
-    export function CodeMirror(place, options) {
+    function CodeMirror(place, options) {
         if (!(this instanceof CodeMirror))
             return new CodeMirror(place, options);
         this.options = options = options ? q.copyObj(options) : {};
@@ -201,4 +201,6 @@ define([
     }
     let initHooks = [];
     CodeMirror.defineInitHook = f => initHooks.push(f);
+
+    return CodeMirror;
 });

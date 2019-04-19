@@ -29,7 +29,7 @@ define([
             this.dims = d.getDimensions(cm);
             this.events = [];
         }
-        g.signal(emitter, type) {
+        signal(emitter, type) {
             if (g.hasHandler(emitter, type))
                 this.events.push(arguments);
         }
@@ -54,7 +54,7 @@ define([
         let active = f.activeElt();
         if (!active || !f.contains(cm.display.lineDiv, active))
             return null;
-        let result = { f.activeElt: active };
+        let result = { activeElt: active };
         if (window.getSelection) {
             let sel = window.getSelection();
             if (sel.anchorNode && sel.extend && f.contains(cm.display.lineDiv, sel.anchorNode)) {

@@ -77,7 +77,7 @@ define([
                 bottom: needsH ? sWidth : 0
             };
         }
-        g.setScrollLeft(pos) {
+        setScrollLeft(pos) {
             if (this.horiz.scrollLeft != pos)
                 this.horiz.scrollLeft = pos;
             if (this.disableHoriz)
@@ -100,8 +100,8 @@ define([
             bar.style.pointerEvents = 'auto';
             function maybeDisable() {
                 let box = bar.getBoundingClientRect();
-                let a.elt = type == 'vert' ? document.elementFromPoint(box.right - 1, (box.top + box.bottom) / 2) : document.elementFromPoint((box.right + box.left) / 2, box.bottom - 1);
-                if (a.elt != bar)
+                let elt = type == 'vert' ? document.elementFromPoint(box.right - 1, (box.top + box.bottom) / 2) : document.elementFromPoint((box.right + box.left) / 2, box.bottom - 1);
+                if (elt != bar)
                     bar.style.pointerEvents = 'none';
                 else
                     delay.set(1000, maybeDisable);
@@ -121,7 +121,7 @@ define([
                 right: 0
             };
         }
-        g.setScrollLeft() {
+        setScrollLeft() {
         }
         setScrollTop() {
         }
@@ -181,7 +181,7 @@ define([
             if (axis == 'horizontal')
                 g.setScrollLeft(cm, pos);
             else
-                g.updateScrollTop(cm, pos);
+                (cm, pos);
         }, cm);
         if (cm.display.scrollbars.undefined)
             a.addClass(cm.display.wrapper, cm.display.scrollbars.undefined);

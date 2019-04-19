@@ -85,7 +85,7 @@ define([
                 i.scrollToCoords(this.cm, 0, 0);
             r.setSelection(this, q.simpleSelection(top), h.sel_dontScroll);
         }),
-        j.replaceRange: function (code, from, to, origin) {
+        replaceRange: function (code, from, to, origin) {
             from = c.clipPos(this, from);
             to = to ? c.clipPos(this, to) : from;
             j.replaceRange(this, code, from, to, origin);
@@ -96,7 +96,7 @@ define([
                 return lines;
             return lines.join(lineSep || this.lineSeparator());
         },
-        e.getLine: function (line) {
+        getLine: function (line) {
             let l = this.getLineHandle(line);
             return l && l.text;
         },
@@ -121,7 +121,7 @@ define([
         lastLine: function () {
             return this.first + this.size - 1;
         },
-        c.clipPos: function (pos) {
+        clipPos: function (pos) {
             return c.clipPos(this, pos);
         },
         getCursor: function (start) {
@@ -145,13 +145,13 @@ define([
         setCursor: a.docMethodOp(function (line, ch, options) {
             r.setSimpleSelection(this, c.clipPos(this, typeof line == 'number' ? c.Pos(line, ch || 0) : line), null, options);
         }),
-        r.setSelection: a.docMethodOp(function (anchor, head, options) {
+        setSelection: a.docMethodOp(function (anchor, head, options) {
             r.setSimpleSelection(this, c.clipPos(this, anchor), c.clipPos(this, head || anchor), options);
         }),
-        r.extendSelection: a.docMethodOp(function (head, other, options) {
+        extendSelection: a.docMethodOp(function (head, other, options) {
             r.extendSelection(this, c.clipPos(this, head), other && c.clipPos(this, other), options);
         }),
-        r.extendSelections: a.docMethodOp(function (heads, options) {
+        extendSelections: a.docMethodOp(function (heads, options) {
             r.extendSelections(this, c.clipPosArray(this, heads), options);
         }),
         extendSelectionsBy: a.docMethodOp(function (f, options) {
@@ -351,13 +351,13 @@ define([
                 return true;
             });
         }),
-        o.addLineWidget: a.docMethodOp(function (handle, node, options) {
+        addLineWidget: a.docMethodOp(function (handle, node, options) {
             return o.addLineWidget(this, handle, node, options);
         }),
         removeLineWidget: function (widget) {
             widget.clear();
         },
-        p.markText: function (from, to, options) {
+        markText: function (from, to, options) {
             return p.markText(this, c.clipPos(this, from), c.clipPos(this, to), options, options && options.type || 'range');
         },
         setBookmark: function (pos, options) {
@@ -385,16 +385,16 @@ define([
         findMarks: function (from, to, filter) {
             from = c.clipPos(this, from);
             to = c.clipPos(this, to);
-            let found = [], e.lineNo = from.line;
+            let found = [], lineNo = from.line;
             this.iter(from.line, to.line + 1, line => {
                 let spans = line.markedSpans;
                 if (spans)
                     for (let i = 0; i < spans.length; i++) {
                         let span = spans[i];
-                        if (!(span.to != null && e.lineNo == from.line && from.ch >= span.to || span.from == null && e.lineNo != from.line || span.from != null && e.lineNo == to.line && span.from >= to.ch) && (!filter || filter(span.marker)))
+                        if (!(span.to != null && lineNo == from.line && from.ch >= span.to || span.from == null && lineNo != from.line || span.from != null && lineNo == to.line && span.from >= to.ch) && (!filter || filter(span.marker)))
                             found.push(span.marker.parent || span.marker);
                     }
-                ++e.lineNo;
+                ++lineNo;
             });
             return found;
         },
@@ -410,7 +410,7 @@ define([
             return markers;
         },
         posFromIndex: function (off) {
-            let ch, e.lineNo = this.first, sepSize = this.lineSeparator().length;
+            let ch, lineNo = this.first, sepSize = this.lineSeparator().length;
             this.iter(line => {
                 let sz = line.text.length + sepSize;
                 if (sz > off) {
@@ -418,9 +418,9 @@ define([
                     return true;
                 }
                 off -= sz;
-                ++e.lineNo;
+                ++lineNo;
             });
-            return c.clipPos(this, c.Pos(e.lineNo, ch));
+            return c.clipPos(this, c.Pos(lineNo, ch));
         },
         indexFromPos: function (coords) {
             coords = c.clipPos(this, coords);

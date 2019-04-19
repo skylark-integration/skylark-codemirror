@@ -45,5 +45,5 @@ define([
     g.addLegacyProps(a.CodeMirror);
     a.CodeMirror.version = '5.45.0';
     return { 
-        a.CodeMirror };
+        CodeMirror : CodeMirror };
 });

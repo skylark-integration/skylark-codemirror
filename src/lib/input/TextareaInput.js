@@ -13,7 +13,7 @@ define([
     '../util/misc'
 ], function (a, b, c, d, e, f, g, h, i, j, k, l) {
     'use strict';
-    return class TextareaInput {
+    class TextareaInput {
         constructor(cm) {
             this.cm = cm;
             this.prevInput = '';
@@ -106,7 +106,7 @@ define([
             this.wrapper = c.hiddenTextarea();
             this.textarea = this.wrapper.firstChild;
         }
-        b.prepareSelection() {
+        prepareSelection() {
             let cm = this.cm, display = cm.display, doc = cm.doc;
             let result = b.prepareSelection(cm);
             if (cm.options.moveInputWithCursor) {
@@ -323,4 +323,7 @@ define([
         }
     };
     TextareaInput.prototype.needsContentAttribute = false;
+
+    return TextareaInput;
+
 });

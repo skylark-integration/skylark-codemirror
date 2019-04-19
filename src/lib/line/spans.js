@@ -226,7 +226,7 @@ define([
             }
         return found;
     }
-    function conflictingCollapsedRange(doc, d.lineNo, from, to, marker) {
+    function conflictingCollapsedRange(doc, lineNo, from, to, marker) {
         let line = d.getLine(doc, d.lineNo);
         let sps = c.sawCollapsedSpans && line.markedSpans;
         if (sps)

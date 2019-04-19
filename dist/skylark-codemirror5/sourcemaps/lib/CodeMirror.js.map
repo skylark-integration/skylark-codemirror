@@ -1,0 +1,1 @@
+{"version":3,"sources":["lib/CodeMirror.js"],"names":["define","a","codemirror","CodeMirror"],"mappings":";;;;;;;AAAAA,QACC,gBACA,eACE,SAAUC,GACT,aACA,OAAOC,WAAWC,WAAaF,EAAEE","file":"../../lib/CodeMirror.js","sourcesContent":["define([\n\t'../codemirror',\n\t'./edit/main'\n], function (a) {\n    'use strict';\n    return codemirror.CodeMirror = a.CodeMirror;\n});"]}

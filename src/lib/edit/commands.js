@@ -13,7 +13,7 @@ define([
 ], function (a, b, c, d, e, f, g, h, i, j, k) {
     'use strict';
     let commands = {
-        i.selectAll: i.selectAll,
+        selectAll: i.selectAll,
         singleSelection: cm => cm.setSelection(cm.getCursor('anchor'), cm.getCursor('head'), j.sel_dontScroll),
         killLine: cm => a.deleteNearSelection(cm, range => {
             if (range.empty()) {

@@ -61,14 +61,14 @@ define([
             return false;
         }
     } : te => {
-        let a.range;
+        let range;
         try {
-            a.range = te.ownerDocument.selection.createRange();
+            range = te.ownerDocument.selection.createRange();
         } catch (e) {
         }
-        if (!a.range || a.range.parentElement() != te)
+        if (!range || range.parentElement() != te)
             return false;
-        return a.range.compareEndPoints('StartToEnd', a.range) != 0;
+        return range.compareEndPoints('StartToEnd', range) != 0;
     };
     let hasCopyEvent = (() => {
         let e = a.elt('div');

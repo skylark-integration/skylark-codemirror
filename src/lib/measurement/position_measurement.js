@@ -469,14 +469,14 @@ define([
     function boxIsAfter(box, x, y, left) {
         return box.bottom <= y ? false : box.top > y ? true : (left ? box.left : box.right) > x;
     }
-    function coordsCharInner(cm, lineObj, d.lineNo, x, y) {
+    function coordsCharInner(cm, lineObj, lineNo, x, y) {
         y -= c.heightAtLine(lineObj);
         let preparedMeasure = prepareMeasureForLine(cm, lineObj);
-        let l.widgetHeight = widgetTopHeight(lineObj);
+        let widgetHeight = widgetTopHeight(lineObj);
         let begin = 0, end = lineObj.text.length, ltr = true;
         let order = e.getOrder(lineObj, cm.doc.direction);
         if (order) {
-            let part = (cm.options.lineWrapping ? coordsBidiPartWrapped : coordsBidiPart)(cm, lineObj, d.lineNo, preparedMeasure, order, x, y);
+            let part = (cm.options.lineWrapping ? coordsBidiPartWrapped : coordsBidiPart)(cm, lineObj, lineNo, preparedMeasure, order, x, y);
             ltr = part.level != 1;
             begin = ltr ? part.from : part.to - 1;
             end = ltr ? part.to : part.from - 1;
@@ -504,22 +504,22 @@ define([
             if (!ltr && (ch == end || ch == begin))
                 ch++;
             sticky = ch == 0 ? 'after' : ch == lineObj.text.length ? 'before' : measureCharPrepared(cm, preparedMeasure, ch - (ltr ? 1 : 0)).bottom + l.widgetHeight <= y == ltr ? 'after' : 'before';
-            let coords = cursorCoords(cm, b.Pos(d.lineNo, ch, sticky), 'line', lineObj, preparedMeasure);
+            let coords = cursorCoords(cm, b.Pos(lineNo, ch, sticky), 'line', lineObj, preparedMeasure);
             baseX = coords.left;
             outside = y < coords.top || y >= coords.bottom;
         }
         ch = j.skipExtendingChars(lineObj.text, ch, 1);
-        return PosWithInfo(d.lineNo, ch, sticky, outside, x - baseX);
+        return PosWithInfo(lineNo, ch, sticky, outside, x - baseX);
     }
-    function coordsBidiPart(cm, lineObj, d.lineNo, preparedMeasure, order, x, y) {
+    function coordsBidiPart(cm, lineObj, lineNo, preparedMeasure, order, x, y) {
         let index = j.findFirst(i => {
             let part = order[i], ltr = part.level != 1;
-            return boxIsAfter(cursorCoords(cm, b.Pos(d.lineNo, ltr ? part.to : part.from, ltr ? 'before' : 'after'), 'line', lineObj, preparedMeasure), x, y, true);
+            return boxIsAfter(cursorCoords(cm, b.Pos(lineNo, ltr ? part.to : part.from, ltr ? 'before' : 'after'), 'line', lineObj, preparedMeasure), x, y, true);
         }, 0, order.length - 1);
         let part = order[index];
         if (index > 0) {
             let ltr = part.level != 1;
-            let start = cursorCoords(cm, b.Pos(d.lineNo, ltr ? part.from : part.to, ltr ? 'after' : 'before'), 'line', lineObj, preparedMeasure);
+            let start = cursorCoords(cm, b.Pos(lineNo, ltr ? part.from : part.to, ltr ? 'after' : 'before'), 'line', lineObj, preparedMeasure);
             if (boxIsAfter(start, x, y, true) && start.top > y)
                 part = order[index - 1];
         }

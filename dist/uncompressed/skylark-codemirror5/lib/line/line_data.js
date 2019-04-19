@@ -16,7 +16,7 @@ define([
             h.attachMarkedSpans(this, markedSpans);
             this.height = estimateHeight ? estimateHeight(this) : 1;
         }
-        i.lineNo() {
+        lineNo() {
             return i.lineNo(this);
         }
     }
