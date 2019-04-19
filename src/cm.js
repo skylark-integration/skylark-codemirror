@@ -1,7 +1,6 @@
 define([
-	"skylark-langx/skylark",
-    "./lib/codemirror"
-],function(skylark,CodeMirror){
+	"skylark-langx/skylark"
+],function(skylark){
 	var itg = skylark.itg = skylark.itg || {};
 
 	return itg.cm = {};

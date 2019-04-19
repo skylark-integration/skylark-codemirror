@@ -93,7 +93,15 @@ define('skylark-langx/skylark',[], function() {
     return skylark;
 });
 
-define('skylark-codemirror5/lib/util/browser',[],function () {
+define('skylark-codemirror5/cm',[
+	"skylark-langx/skylark"
+],function(skylark){
+	var itg = skylark.itg = skylark.itg || {};
+
+	return itg.cm = {};
+
+});
+define('skylark-codemirror5/primitives/util/browser',[],function () {
     'use strict';
     let userAgent = navigator.userAgent;
     let platform = navigator.platform;
@@ -145,7 +153,7 @@ define('skylark-codemirror5/lib/util/browser',[],function () {
         captureRightClick: captureRightClick
     };
 });
-define('skylark-codemirror5/lib/util/dom',['./browser'], function (a) {
+define('skylark-codemirror5/primitives/util/dom',['./browser'], function (a) {
     'use strict';
     function classTest(cls) {
         return new RegExp('(^|\\s)' + cls + '(?:$|\\s)\\s*');
@@ -270,7 +278,7 @@ define('skylark-codemirror5/lib/util/dom',['./browser'], function (a) {
         selectInput: selectInput
     };
 });
-define('skylark-codemirror5/lib/util/misc',[],function () {
+define('skylark-codemirror5/primitives/util/misc',[],function () {
     'use strict';
     function bind(f) {
         let args = Array.prototype.slice.call(arguments, 1);
@@ -438,7 +446,7 @@ define('skylark-codemirror5/lib/util/misc',[],function () {
         findFirst: findFirst
     };
 });
-define('skylark-codemirror5/lib/display/Display',[
+define('skylark-codemirror5/primitives/display/Display',[
     '../util/browser',
     '../util/dom',
     '../util/misc'
@@ -517,7 +525,7 @@ define('skylark-codemirror5/lib/display/Display',[
     }
     return { Display: Display };
 });
-define('skylark-codemirror5/lib/line/utils_line',['../util/misc'], function (a) {
+define('skylark-codemirror5/primitives/line/utils_line',['../util/misc'], function (a) {
     'use strict';
     function getLine(doc, n) {
         n -= doc.first;
@@ -616,7 +624,7 @@ define('skylark-codemirror5/lib/line/utils_line',['../util/misc'], function (a) 
         lineNumberFor: lineNumberFor
     };
 });
-define('skylark-codemirror5/lib/line/pos',['./utils_line'], function (a) {
+define('skylark-codemirror5/primitives/line/pos',['./utils_line'], function (a) {
     'use strict';
     function Pos(line, ch, sticky = null) {
         if (!(this instanceof Pos))
@@ -678,7 +686,7 @@ define('skylark-codemirror5/lib/line/pos',['./utils_line'], function (a) {
         clipPosArray: clipPosArray
     };
 });
-define('skylark-codemirror5/lib/line/saw_special_spans',[],function () {
+define('skylark-codemirror5/primitives/line/saw_special_spans',[],function () {
     'use strict';
     let sawReadOnlySpans = false, sawCollapsedSpans = false;
     function seeReadOnlySpans() {
@@ -694,7 +702,7 @@ define('skylark-codemirror5/lib/line/saw_special_spans',[],function () {
         seeCollapsedSpans: seeCollapsedSpans
     };
 });
-define('skylark-codemirror5/lib/line/spans',[
+define('skylark-codemirror5/primitives/line/spans',[
     '../util/misc',
     './pos',
     './saw_special_spans',
@@ -1080,7 +1088,7 @@ define('skylark-codemirror5/lib/line/spans',[
         findMaxLine: findMaxLine
     };
 });
-define('skylark-codemirror5/lib/util/bidi',['./misc'], function (a) {
+define('skylark-codemirror5/primitives/util/bidi',['./misc'], function (a) {
     'use strict';
     function iterateBidiSections(order, from, to, f) {
         if (!order)
@@ -1264,7 +1272,7 @@ define('skylark-codemirror5/lib/util/bidi',['./misc'], function (a) {
         getOrder: getOrder
     };
 });
-define('skylark-codemirror5/lib/util/event',[
+define('skylark-codemirror5/primitives/util/event',[
     './browser',
     './misc'
 ], function (a, b) {
@@ -1389,7 +1397,7 @@ define('skylark-codemirror5/lib/util/event',[
         e_button: e_button
     };
 });
-define('skylark-codemirror5/lib/util/feature_detection',[
+define('skylark-codemirror5/primitives/util/feature_detection',[
     './dom',
     './browser'
 ], function (a, b) {
@@ -1487,7 +1495,7 @@ define('skylark-codemirror5/lib/util/feature_detection',[
         hasBadZoomedRects: hasBadZoomedRects
     };
 });
-define('skylark-codemirror5/lib/modes',['./util/misc'], function (a) {
+define('skylark-codemirror5/primitives/modes',['./util/misc'], function (a) {
     'use strict';
     let modes = {}, mimeModes = {};
     function defineMode(name, mode) {
@@ -1591,7 +1599,7 @@ define('skylark-codemirror5/lib/modes',['./util/misc'], function (a) {
         startState: startState
     };
 });
-define('skylark-codemirror5/lib/util/StringStream',['./misc'], function (a) {
+define('skylark-codemirror5/primitives/util/StringStream',['./misc'], function (a) {
     'use strict';
     class StringStream {
         constructor(string, tabSize, lineOracle) {
@@ -1702,7 +1710,7 @@ define('skylark-codemirror5/lib/util/StringStream',['./misc'], function (a) {
     }
     return StringStream;
 });
-define('skylark-codemirror5/lib/line/highlight',[
+define('skylark-codemirror5/primitives/line/highlight',[
     '../util/misc',
     '../modes',
     '../util/StringStream',
@@ -1979,7 +1987,7 @@ define('skylark-codemirror5/lib/line/highlight',[
         retreatFrontier: retreatFrontier
     };
 });
-define('skylark-codemirror5/lib/line/line_data',[
+define('skylark-codemirror5/primitives/line/line_data',[
     '../util/bidi',
     '../util/browser',
     '../util/dom',
@@ -2313,7 +2321,7 @@ define('skylark-codemirror5/lib/line/line_data',[
         buildViewArray: buildViewArray
     };
 });
-define('skylark-codemirror5/lib/util/operation_group',['./event'], function (a) {
+define('skylark-codemirror5/primitives/util/operation_group',['./event'], function (a) {
     'use strict';
     let operationGroup = null;
     function pushOperation(op) {
@@ -2379,7 +2387,7 @@ define('skylark-codemirror5/lib/util/operation_group',['./event'], function (a) 
         signalLater: signalLater
     };
 });
-define('skylark-codemirror5/lib/display/update_line',[
+define('skylark-codemirror5/primitives/display/update_line',[
     '../line/line_data',
     '../line/utils_line',
     '../util/browser',
@@ -2564,7 +2572,7 @@ define('skylark-codemirror5/lib/display/update_line',[
         buildLineElement: buildLineElement
     };
 });
-define('skylark-codemirror5/lib/measurement/widgets',[
+define('skylark-codemirror5/primitives/measurement/widgets',[
     '../util/dom',
     '../util/event'
 ], function (a, b) {
@@ -2596,7 +2604,7 @@ define('skylark-codemirror5/lib/measurement/widgets',[
         eventInWidget: eventInWidget
     };
 });
-define('skylark-codemirror5/lib/measurement/position_measurement',[
+define('skylark-codemirror5/primitives/measurement/position_measurement',[
     '../line/line_data',
     '../line/pos',
     '../line/spans',
@@ -3294,7 +3302,7 @@ define('skylark-codemirror5/lib/measurement/position_measurement',[
         findViewIndex: findViewIndex
     };
 });
-define('skylark-codemirror5/lib/display/selection',[
+define('skylark-codemirror5/primitives/display/selection',[
     '../line/pos',
     '../line/spans',
     '../line/utils_line',
@@ -3454,7 +3462,7 @@ define('skylark-codemirror5/lib/display/selection',[
         restartBlink: restartBlink
     };
 });
-define('skylark-codemirror5/lib/display/focus',[
+define('skylark-codemirror5/primitives/display/focus',[
     './selection',
     '../util/browser',
     '../util/dom',
@@ -3515,7 +3523,7 @@ define('skylark-codemirror5/lib/display/focus',[
         onBlur: onBlur
     };
 });
-define('skylark-codemirror5/lib/display/update_lines',[
+define('skylark-codemirror5/primitives/display/update_lines',[
     '../line/spans',
     '../line/utils_line',
     '../measurement/position_measurement',
@@ -3591,7 +3599,7 @@ define('skylark-codemirror5/lib/display/update_lines',[
         visibleLines: visibleLines
     };
 });
-define('skylark-codemirror5/lib/display/line_numbers',[
+define('skylark-codemirror5/primitives/display/line_numbers',[
     '../line/utils_line',
     '../measurement/position_measurement',
     '../util/dom',
@@ -3642,7 +3650,7 @@ define('skylark-codemirror5/lib/display/line_numbers',[
         maybeUpdateLineNumberWidth: maybeUpdateLineNumberWidth
     };
 });
-define('skylark-codemirror5/lib/display/scrolling',[
+define('skylark-codemirror5/primitives/display/scrolling',[
     '../line/pos',
     '../measurement/position_measurement',
     '../util/browser',
@@ -3830,7 +3838,7 @@ define('skylark-codemirror5/lib/display/scrolling',[
         setScrollLeft: setScrollLeft
     };
 });
-define('skylark-codemirror5/lib/display/scrollbars',[
+define('skylark-codemirror5/primitives/display/scrollbars',[
     '../util/dom',
     '../util/event',
     '../measurement/position_measurement',
@@ -4025,7 +4033,7 @@ define('skylark-codemirror5/lib/display/scrollbars',[
         initScrollbars: initScrollbars
     };
 });
-define('skylark-codemirror5/lib/display/operations',[
+define('skylark-codemirror5/primitives/display/operations',[
     '../line/pos',
     '../line/spans',
     '../measurement/position_measurement',
@@ -4220,7 +4228,7 @@ define('skylark-codemirror5/lib/display/operations',[
         docMethodOp: docMethodOp
     };
 });
-define('skylark-codemirror5/lib/display/view_tracking',[
+define('skylark-codemirror5/primitives/display/view_tracking',[
     '../line/line_data',
     '../line/saw_special_spans',
     '../line/spans',
@@ -4373,7 +4381,7 @@ define('skylark-codemirror5/lib/display/view_tracking',[
         countDirtyView: countDirtyView
     };
 });
-define('skylark-codemirror5/lib/display/highlight_worker',[
+define('skylark-codemirror5/primitives/display/highlight_worker',[
     '../line/highlight',
     '../modes',
     '../util/misc',
@@ -4433,7 +4441,7 @@ define('skylark-codemirror5/lib/display/highlight_worker',[
     }
     return { startWorker: startWorker };
 });
-define('skylark-codemirror5/lib/display/update_display',[
+define('skylark-codemirror5/primitives/display/update_display',[
     '../line/saw_special_spans',
     '../line/spans',
     '../line/utils_line',
@@ -4658,7 +4666,7 @@ define('skylark-codemirror5/lib/display/update_display',[
         setDocumentHeight: setDocumentHeight
     };
 });
-define('skylark-codemirror5/lib/display/gutters',[
+define('skylark-codemirror5/primitives/display/gutters',[
     '../util/dom',
     '../util/misc',
     './update_display'
@@ -4693,7 +4701,7 @@ define('skylark-codemirror5/lib/display/gutters',[
         setGuttersForLineNumbers: setGuttersForLineNumbers
     };
 });
-define('skylark-codemirror5/lib/display/scroll_events',[
+define('skylark-codemirror5/primitives/display/scroll_events',[
     '../util/browser',
     '../util/event',
     './update_display',
@@ -4796,7 +4804,7 @@ define('skylark-codemirror5/lib/display/scroll_events',[
         onScrollWheel: onScrollWheel
     };
 });
-define('skylark-codemirror5/lib/model/selection',[
+define('skylark-codemirror5/primitives/model/selection',[
     '../line/pos',
     '../util/misc'
 ], function (a, b) {
@@ -4887,7 +4895,7 @@ define('skylark-codemirror5/lib/model/selection',[
         simpleSelection: simpleSelection
     };
 });
-define('skylark-codemirror5/lib/model/change_measurement',[
+define('skylark-codemirror5/primitives/model/change_measurement',[
     '../line/pos',
     '../util/misc',
     './selection'
@@ -4946,7 +4954,7 @@ define('skylark-codemirror5/lib/model/change_measurement',[
         computeReplacedSel: computeReplacedSel
     };
 });
-define('skylark-codemirror5/lib/display/mode_state',[
+define('skylark-codemirror5/primitives/display/mode_state',[
     '../modes',
     './highlight_worker',
     './view_tracking'
@@ -4974,7 +4982,7 @@ define('skylark-codemirror5/lib/display/mode_state',[
         resetModeState: resetModeState
     };
 });
-define('skylark-codemirror5/lib/model/document_data',[
+define('skylark-codemirror5/primitives/model/document_data',[
     '../display/mode_state',
     '../display/operations',
     '../display/view_tracking',
@@ -5086,7 +5094,7 @@ define('skylark-codemirror5/lib/model/document_data',[
         directionChanged: directionChanged
     };
 });
-define('skylark-codemirror5/lib/model/history',[
+define('skylark-codemirror5/primitives/model/history',[
     '../line/pos',
     '../line/spans',
     '../line/utils_line',
@@ -5285,7 +5293,7 @@ define('skylark-codemirror5/lib/model/history',[
         copyHistoryArray: copyHistoryArray
     };
 });
-define('skylark-codemirror5/lib/model/selection_updates',[
+define('skylark-codemirror5/primitives/model/selection_updates',[
     '../util/operation_group',
     '../display/scrolling',
     '../line/pos',
@@ -5477,7 +5485,7 @@ define('skylark-codemirror5/lib/model/selection_updates',[
         selectAll: selectAll
     };
 });
-define('skylark-codemirror5/lib/model/changes',[
+define('skylark-codemirror5/primitives/model/changes',[
     '../line/highlight',
     '../display/highlight_worker',
     '../display/operations',
@@ -5815,7 +5823,7 @@ define('skylark-codemirror5/lib/model/changes',[
         changeLine: changeLine
     };
 });
-define('skylark-codemirror5/lib/model/chunk',[
+define('skylark-codemirror5/primitives/model/chunk',[
     '../line/line_data',
     '../util/misc',
     '../util/operation_group'
@@ -5973,7 +5981,7 @@ define('skylark-codemirror5/lib/model/chunk',[
         BranchChunk: BranchChunk
     };
 });
-define('skylark-codemirror5/lib/model/line_widget',[
+define('skylark-codemirror5/primitives/model/line_widget',[
     '../display/operations',
     '../display/scrolling',
     '../display/view_tracking',
@@ -6065,7 +6073,7 @@ define('skylark-codemirror5/lib/model/line_widget',[
         addLineWidget: addLineWidget
     };
 });
-define('skylark-codemirror5/lib/model/mark_text',[
+define('skylark-codemirror5/primitives/model/mark_text',[
     '../util/dom',
     '../util/event',
     '../display/operations',
@@ -6345,7 +6353,7 @@ define('skylark-codemirror5/lib/model/mark_text',[
         detachSharedMarkers: detachSharedMarkers
     };
 });
-define('skylark-codemirror5/lib/model/Doc',[
+define('skylark-codemirror5/primitives/model/Doc',[
     '../edit/CodeMirror',
     '../display/operations',
     '../line/line_data',
@@ -6867,7 +6875,7 @@ define('skylark-codemirror5/lib/model/Doc',[
     Doc.prototype.eachLine = Doc.prototype.iter;
     return Doc;
 });
-define('skylark-codemirror5/lib/edit/drop_events',[
+define('skylark-codemirror5/primitives/edit/drop_events',[
     '../display/selection',
     '../display/operations',
     '../line/pos',
@@ -6992,7 +7000,7 @@ define('skylark-codemirror5/lib/edit/drop_events',[
         clearDragCursor: clearDragCursor
     };
 });
-define('skylark-codemirror5/lib/edit/global_events',[
+define('skylark-codemirror5/primitives/edit/global_events',[
     '../display/focus',
     '../util/event'
 ], function (a, b) {
@@ -7038,7 +7046,7 @@ define('skylark-codemirror5/lib/edit/global_events',[
     }
     return { ensureGlobalHandlers: ensureGlobalHandlers };
 });
-define('skylark-codemirror5/lib/input/keynames',[],function () {
+define('skylark-codemirror5/primitives/input/keynames',[],function () {
     'use strict';
     let keyNames = {
         3: 'Pause',
@@ -7106,7 +7114,7 @@ define('skylark-codemirror5/lib/input/keynames',[],function () {
         keyNames[i + 111] = keyNames[i + 63235] = 'F' + i;
     return { keyNames: keyNames };
 });
-define('skylark-codemirror5/lib/input/keymap',[
+define('skylark-codemirror5/primitives/input/keymap',[
     '../util/browser',
     '../util/misc',
     './keynames'
@@ -7334,7 +7342,7 @@ define('skylark-codemirror5/lib/input/keymap',[
         getKeyMap: getKeyMap
     };
 });
-define('skylark-codemirror5/lib/edit/deleteNearSelection',[
+define('skylark-codemirror5/primitives/edit/deleteNearSelection',[
     '../display/operations',
     '../display/scrolling',
     '../line/pos',
@@ -7363,7 +7371,7 @@ define('skylark-codemirror5/lib/edit/deleteNearSelection',[
     }
     return { deleteNearSelection: deleteNearSelection };
 });
-define('skylark-codemirror5/lib/input/movement',[
+define('skylark-codemirror5/primitives/input/movement',[
     '../line/pos',
     '../measurement/position_measurement',
     '../util/bidi',
@@ -7465,7 +7473,7 @@ define('skylark-codemirror5/lib/input/movement',[
         moveVisually: moveVisually
     };
 });
-define('skylark-codemirror5/lib/edit/commands',[
+define('skylark-codemirror5/primitives/edit/commands',[
     './deleteNearSelection',
     '../display/operations',
     '../display/scrolling',
@@ -7674,7 +7682,7 @@ define('skylark-codemirror5/lib/edit/commands',[
     }
     return { commands: commands };
 });
-define('skylark-codemirror5/lib/edit/key_events',[
+define('skylark-codemirror5/primitives/edit/key_events',[
     '../util/operation_group',
     '../display/selection',
     '../input/keymap',
@@ -7826,7 +7834,7 @@ define('skylark-codemirror5/lib/edit/key_events',[
         onKeyPress: onKeyPress
     };
 });
-define('skylark-codemirror5/lib/edit/mouse_events',[
+define('skylark-codemirror5/primitives/edit/mouse_events',[
     '../display/focus',
     '../display/operations',
     '../display/update_lines',
@@ -8226,7 +8234,7 @@ define('skylark-codemirror5/lib/edit/mouse_events',[
         onContextMenu: onContextMenu
     };
 });
-define('skylark-codemirror5/lib/edit/utils',['../measurement/position_measurement'], function (a) {
+define('skylark-codemirror5/primitives/edit/utils',['../measurement/position_measurement'], function (a) {
     'use strict';
     function themeChanged(cm) {
         cm.display.wrapper.className = cm.display.wrapper.className.replace(/\s*cm-s-\S+/g, '') + cm.options.theme.replace(/(^|\s)\s*/g, ' cm-s-');
@@ -8234,7 +8242,7 @@ define('skylark-codemirror5/lib/edit/utils',['../measurement/position_measuremen
     }
     return { themeChanged: themeChanged };
 });
-define('skylark-codemirror5/lib/edit/options',[
+define('skylark-codemirror5/primitives/edit/options',[
     '../display/focus',
     '../display/gutters',
     '../display/line_numbers',
@@ -8433,7 +8441,7 @@ define('skylark-codemirror5/lib/edit/options',[
         defineOptions: defineOptions
     };
 });
-define('skylark-codemirror5/lib/edit/CodeMirror',[
+define('skylark-codemirror5/primitives/edit/CodeMirror',[
     '../display/Display',
     '../display/focus',
     '../display/gutters',
@@ -8639,7 +8647,7 @@ define('skylark-codemirror5/lib/edit/CodeMirror',[
 
     return CodeMirror;
 });
-define('skylark-codemirror5/lib/input/indent',[
+define('skylark-codemirror5/primitives/input/indent',[
     '../line/highlight',
     '../line/pos',
     '../line/utils_line',
@@ -8713,7 +8721,7 @@ define('skylark-codemirror5/lib/input/indent',[
     }
     return { indentLine: indentLine };
 });
-define('skylark-codemirror5/lib/input/input',[
+define('skylark-codemirror5/primitives/input/input',[
     '../display/operations',
     '../display/scrolling',
     '../line/pos',
@@ -8856,7 +8864,7 @@ define('skylark-codemirror5/lib/input/input',[
         hiddenTextarea: hiddenTextarea
     };
 });
-define('skylark-codemirror5/lib/edit/methods',[
+define('skylark-codemirror5/primitives/edit/methods',[
     './deleteNearSelection',
     './commands',
     '../model/document_data',
@@ -9465,7 +9473,7 @@ define('skylark-codemirror5/lib/edit/methods',[
         return target;
     }
 });
-define('skylark-codemirror5/lib/input/ContentEditableInput',[
+define('skylark-codemirror5/primitives/input/ContentEditableInput',[
     '../display/operations',
     '../display/selection',
     '../display/view_tracking',
@@ -10015,7 +10023,7 @@ define('skylark-codemirror5/lib/input/ContentEditableInput',[
 
     return ContentEditableInput;
 });
-define('skylark-codemirror5/lib/input/TextareaInput',[
+define('skylark-codemirror5/primitives/input/TextareaInput',[
     '../display/operations',
     '../display/selection',
     './input',
@@ -10344,7 +10352,7 @@ define('skylark-codemirror5/lib/input/TextareaInput',[
     return TextareaInput;
 
 });
-define('skylark-codemirror5/lib/edit/fromTextArea',[
+define('skylark-codemirror5/primitives/edit/fromTextArea',[
     './CodeMirror',
     '../util/dom',
     '../util/event',
@@ -10403,7 +10411,7 @@ define('skylark-codemirror5/lib/edit/fromTextArea',[
     }
     return { fromTextArea: fromTextArea };
 });
-define('skylark-codemirror5/lib/edit/legacy',[
+define('skylark-codemirror5/primitives/edit/legacy',[
     '../display/scrollbars',
     '../display/scroll_events',
     '../input/keymap',
@@ -10468,7 +10476,7 @@ define('skylark-codemirror5/lib/edit/legacy',[
     }
     return { addLegacyProps: addLegacyProps };
 });
-define('skylark-codemirror5/lib/edit/main',[
+define('skylark-codemirror5/primitives/edit/main',[
     './CodeMirror',
     '../util/event',
     '../util/misc',
@@ -10517,32 +10525,16 @@ define('skylark-codemirror5/lib/edit/main',[
     return { 
         CodeMirror : CodeMirror };
 });
-define('skylark-codemirror5/lib/codemirror',[
-	'../cm',
-	'./edit/main'
-], function (a) {
-    'use strict';
-    return cm.CodeMirror = a.CodeMirror;
-});
-define('skylark-codemirror5/cm',[
-	"skylark-langx/skylark",
-    "./lib/codemirror"
-],function(skylark,CodeMirror){
-	var itg = skylark.itg = skylark.itg || {};
-
-	return itg.cm = {};
-
-});
-define('skylark-codemirror5/lib/CodeMirror',[
-	'../cm',
-	'./edit/main'
+define('skylark-codemirror5/CodeMirror',[
+	'./cm',
+	'./primitives/edit/main'
 ], function (a) {
     'use strict';
     return cm.CodeMirror = a.CodeMirror;
 });
 define('skylark-codemirror5/main',[
 	"./cm",
-    "./lib/CodeMirror"
+    "./CodeMirror"
 ],function(cm){
 
 	return cm;
