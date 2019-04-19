@@ -1,0 +1,9 @@
+/**
+ * skylark-codemirror5 - A version of codemirror 5.17.1  that ported to running on skylarkjs
+ * @author Hudaokeji, Inc.
+ * @version v0.9.0
+ * @link https://github.com/skylark-integration/skylark-codemirror5/
+ * @license MIT
+ */
+!function(e){"object"==typeof exports&&"object"==typeof module?e(require("../../lib/codemirror"),require("../javascript/javascript")):"function"==typeof define&&define.amd?define(["../../lib/codemirror","../javascript/javascript"],e):e(CodeMirror)}(function(e){"use strict";e.defineMode("pegjs",function(t){var n=e.getMode(t,"javascript");return{startState:function(){return{inString:!1,stringType:null,inComment:!1,inCharacterClass:!1,braced:0,lhs:!0,localState:null}},token:function(t,r){if(t&&(r.inString||r.inComment||'"'!=t.peek()&&"'"!=t.peek()||(r.stringType=t.peek(),t.next(),r.inString=!0)),r.inString||r.inComment||!t.match(/^\/\*/)||(r.inComment=!0),r.inString){for(;r.inString&&!t.eol();)t.peek()===r.stringType?(t.next(),r.inString=!1):"\\"===t.peek()?(t.next(),t.next()):t.match(/^.[^\\\"\']*/);return r.lhs?"property string":"string"}if(r.inComment){for(;r.inComment&&!t.eol();)t.match(/\*\//)?r.inComment=!1:t.match(/^.[^\*]*/);return"comment"}if(r.inCharacterClass)for(;r.inCharacterClass&&!t.eol();)t.match(/^[^\]\\]+/)||t.match(/^\\./)||(r.inCharacterClass=!1);else{if("["===t.peek())return t.next(),r.inCharacterClass=!0,"bracket";if(t.match(/^\/\//))return t.skipToEnd(),"comment";if(r.braced||"{"===t.peek()){null===r.localState&&(r.localState=e.startState(n));var i=n.token(t,r.localState),a=t.current();if(!i)for(var o=0;o<a.length;o++)"{"===a[o]?r.braced++:"}"===a[o]&&r.braced--;return i}if(function(e){return e.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)}(t))return":"===t.peek()?"variable":"variable-2";if(-1!=["[","]","(",")"].indexOf(t.peek()))return t.next(),"bracket";t.eatSpace()||t.next()}return null}}},"javascript")});
+//# sourceMappingURL=../../sourcemaps/mode/pegjs/pegjs.js.map
