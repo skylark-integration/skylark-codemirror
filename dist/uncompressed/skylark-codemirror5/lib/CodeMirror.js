@@ -1,7 +1,7 @@
 define([
-	'../codemirror',
+	'../cm',
 	'./edit/main'
 ], function (a) {
     'use strict';
-    return codemirror.CodeMirror = a.CodeMirror;
+    return cm.CodeMirror = a.CodeMirror;
 });

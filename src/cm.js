@@ -4,6 +4,6 @@ define([
 ],function(skylark,CodeMirror){
 	var itg = skylark.itg = skylark.itg || {};
 
-	return itg.codemirror = {};
+	return itg.cm = {};
 
 });

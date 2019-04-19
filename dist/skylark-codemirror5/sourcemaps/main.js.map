@@ -1,1 +1,1 @@
-{"version":3,"sources":["main.js"],"names":["define","codemirror"],"mappings":";;;;;;;AAAAA,QACC,eACG,oBACF,SAASC,GAEV,OAAOA","file":"../main.js","sourcesContent":["define([\r\n\t\"./codemirror\",\r\n    \"./lib/CodeMirror\"\r\n],function(codemirror){\r\n\r\n\treturn codemirror;\r\n});"]}
+{"version":3,"sources":["main.js"],"names":["define","cm"],"mappings":";;;;;;;AAAAA,QACC,OACG,oBACF,SAASC,GAEV,OAAOA","file":"../main.js","sourcesContent":["define([\r\n\t\"./cm\",\r\n    \"./lib/CodeMirror\"\r\n],function(cm){\r\n\r\n\treturn cm;\r\n});"]}

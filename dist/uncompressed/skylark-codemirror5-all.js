@@ -10518,34 +10518,34 @@ define('skylark-codemirror5/lib/edit/main',[
         CodeMirror : CodeMirror };
 });
 define('skylark-codemirror5/lib/codemirror',[
-	'../codemirror',
+	'../cm',
 	'./edit/main'
 ], function (a) {
     'use strict';
-    return codemirror.CodeMirror = a.CodeMirror;
+    return cm.CodeMirror = a.CodeMirror;
 });
-define('skylark-codemirror5/codemirror',[
+define('skylark-codemirror5/cm',[
 	"skylark-langx/skylark",
     "./lib/codemirror"
 ],function(skylark,CodeMirror){
 	var itg = skylark.itg = skylark.itg || {};
 
-	return itg.codemirror = {};
+	return itg.cm = {};
 
 });
 define('skylark-codemirror5/lib/CodeMirror',[
-	'../codemirror',
+	'../cm',
 	'./edit/main'
 ], function (a) {
     'use strict';
-    return codemirror.CodeMirror = a.CodeMirror;
+    return cm.CodeMirror = a.CodeMirror;
 });
 define('skylark-codemirror5/main',[
-	"./codemirror",
+	"./cm",
     "./lib/CodeMirror"
-],function(codemirror){
+],function(cm){
 
-	return codemirror;
+	return cm;
 });
 define('skylark-codemirror5', ['skylark-codemirror5/main'], function (main) { return main; });
 
