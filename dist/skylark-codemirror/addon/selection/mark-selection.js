@@ -1,0 +1,9 @@
+/**
+ * skylark-codemirror - A version of codemirror 5.45  that ported to running on skylarkjs
+ * @author Hudaokeji, Inc.
+ * @version v0.9.0
+ * @link https://github.com/skylark-integration/skylark-codemirror/
+ * @license MIT
+ */
+define(["../../CodeMirror"],function(e){"use strict";function t(e){e.state.markedSelection&&e.operation(function(){!function(e){if(!e.somethingSelected())return a(e);if(e.listSelections().length>1)return c(e);var t=e.getCursor("start"),n=e.getCursor("end"),r=e.state.markedSelection;if(!r.length)return l(e,t,n);var f=r[0].find(),s=r[r.length-1].find();if(!f||!s||n.line-t.line<=o||i(t,s.to)>=0||i(n,f.from)<=0)return c(e);for(;i(t,f.from)>0;)r.shift().clear(),f=r[0].find();i(t,f.from)<0&&(f.to.line-t.line<o?(r.shift().clear(),l(e,t,f.to,0)):l(e,t,f.from,0));for(;i(n,s.to)<0;)r.pop().clear(),s=r[r.length-1].find();i(n,s.to)>0&&(n.line-s.from.line<o?(r.pop().clear(),l(e,s.from,n)):l(e,s.to,n))}(e)})}function n(e){e.state.markedSelection&&e.state.markedSelection.length&&e.operation(function(){a(e)})}e.defineOption("styleSelectedText",!1,function(o,r,i){var l=i&&i!=e.Init;r&&!l?(o.state.markedSelection=[],o.state.markedSelectionStyle="string"==typeof r?r:"CodeMirror-selectedtext",c(o),o.on("cursorActivity",t),o.on("change",n)):!r&&l&&(o.off("cursorActivity",t),o.off("change",n),a(o),o.state.markedSelection=o.state.markedSelectionStyle=null)});var o=8,r=e.Pos,i=e.cmpPos;function l(e,t,n,l){if(0!=i(t,n))for(var a=e.state.markedSelection,c=e.state.markedSelectionStyle,f=t.line;;){var s=f==t.line?t:r(f,0),d=f+o,m=d>=n.line,u=m?n:r(d,0),S=e.markText(s,u,{className:c});if(null==l?a.push(S):a.splice(l++,0,S),m)break;f=d}}function a(e){for(var t=e.state.markedSelection,n=0;n<t.length;++n)t[n].clear();t.length=0}function c(e){a(e);for(var t=e.listSelections(),n=0;n<t.length;n++)l(e,t[n].from(),t[n].to())}});
+//# sourceMappingURL=../../sourcemaps/addon/selection/mark-selection.js.map

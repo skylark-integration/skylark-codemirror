@@ -1,6 +1,6 @@
 {
-  "name": "skylark-codemirror5",
-  "description": "A version of codemirror 5.17.1  that ported to running on skylarkjs",
+  "name": "skylark-codemirror",
+  "description": "A version of codemirror 5.45  that ported to running on skylarkjs",
   "version": "0.9.0",
   "keywords": [
     "css",
@@ -11,17 +11,17 @@
     "framework",
     "web"
   ],
-  "homepage": "https://github.com/skylark-integration/skylark-codemirror5/",
+  "homepage": "https://github.com/skylark-integration/skylark-codemirror/",
   "author": "Hudaokeji, Inc.",
   "scripts": {
     "build": "sbundle build ."
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/skylark-integration/skylark-codemirror5.git"
+    "url": "https://github.com/skylark-integration/skylark-codemirror.git"
   },
   "bugs": {
-    "url": "https://github.com/skylark-integration/skylark-codemirror5/issues"
+    "url": "https://github.com/skylark-integration/skylark-codemirror/issues"
   },
   "license": "MIT",
   "dependencies": {
