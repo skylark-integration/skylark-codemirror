@@ -10,52 +10,53 @@ define([
     '../modes',
     './fromTextArea',
     './legacy'
-], function (a, b, c, d, addEditorMethods, Doc, ContentEditableInput, TextareaInput, e, f, g) {
+], function (CodeMirror, b, c, d, addEditorMethods, Doc, ContentEditableInput, TextareaInput, e, f, g) {
     'use strict';
-    d.defineOptions(a.CodeMirror);
+    d.defineOptions(CodeMirror);
 
-    addEditorMethods(a.CodeMirror);
+    addEditorMethods(CodeMirror);
 
     let dontDelegate = 'iter insert remove copy getEditor constructor'.split(' ');
     for (let prop in Doc.prototype)
         if (Doc.prototype.hasOwnProperty(prop) && c.indexOf(dontDelegate, prop) < 0)
-            a.CodeMirror.prototype[prop] = function (method) {
+            CodeMirror.prototype[prop] = function (method) {
                 return function () {
                     return method.apply(this.doc, arguments);
                 };
             }(Doc.prototype[prop]);
-            
+
     b.eventMixin(Doc);
 
-    a.CodeMirror.inputStyles = {
+    CodeMirror.inputStyles = {
         'textarea': TextareaInput,
         'contenteditable': ContentEditableInput
     };
 
-    a.CodeMirror.defineMode = function (name) {
-        if (!a.CodeMirror.defaults.mode && name != 'null')
-            a.CodeMirror.defaults.mode = name;
+    CodeMirror.defineMode = function (name) {
+        if (!CodeMirror.defaults.mode && name != 'null')
+            CodeMirror.defaults.mode = name;
         e.defineMode.apply(this, arguments);
     };
 
-    a.CodeMirror.defineMIME = e.defineMIME;
+    CodeMirror.defineMIME = e.defineMIME;
 
-    a.CodeMirror.defineMode('null', () => ({ token: stream => stream.skipToEnd() }));
+    CodeMirror.defineMode('null', () => ({ token: stream => stream.skipToEnd() }));
 
-    a.CodeMirror.defineMIME('text/plain', 'null');
+    CodeMirror.defineMIME('text/plain', 'null');
 
-    a.CodeMirror.defineExtension = (name, func) => {
-        a.CodeMirror.prototype[name] = func;
+    CodeMirror.defineExtension = (name, func) => {
+        CodeMirror.prototype[name] = func;
     };
 
-    a.CodeMirror.defineDocExtension = (name, func) => {
+    CodeMirror.defineDocExtension = (name, func) => {
         Doc.prototype[name] = func;
     };
 
-    a.CodeMirror.fromTextArea = f.fromTextArea;
+    CodeMirror.fromTextArea = f.fromTextArea;
 
-    g.addLegacyProps(a.CodeMirror);
-    a.CodeMirror.version = '5.45.0';
+    g.addLegacyProps(CodeMirror);
+    CodeMirror.version = '5.45.0';
     return { 
-        CodeMirror : CodeMirror };
+        CodeMirror : CodeMirror 
+    };
 });

@@ -22,8 +22,11 @@ define([
     '../util/misc',
     '../util/operation_group',
     '../line/utils_line',
-    '../display/view_tracking'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x) {
+    '../display/view_tracking',
+    '../display/highlight_worker',
+    '../display/line_numbers',
+    '../display/scrollbars'
+], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x,m_highlight_worker,m_line_numbers,m_scrollbars) {
     'use strict';
     return function (CodeMirror) {
         let optionHandlers = CodeMirror.optionHandlers;
@@ -507,6 +510,22 @@ define([
             },
             getGutterElement: function () {
                 return this.display.gutters;
+            },
+
+            startWorker : function(time) {
+                return m_highlight_worker.startWorker(this,time);
+            },
+
+            maybeUpdateLineNumberWidth : function() {
+                return m_line_numbers.maybeUpdateLineNumberWidth(this);
+            },
+
+            measureForScrollbars : function() {
+                return m_scrollbars.measureForScrollbars(this);
+            },
+
+            updateScrollbars : function(measure) {
+                return m_scrollbars.updateScrollbars(this,measure);
             }
         };
         e.eventMixin(CodeMirror);

@@ -1997,7 +1997,7 @@ define('skylark-codemirror/primitives/line/line_data',[
     './highlight',
     './spans',
     './utils_line'
-], function (a, b, c, d, e, f, g, h, i) {
+], function (a, b, c, d, e, f, g, h, m_utils_line) {
     'use strict';
     class Line {
         constructor(text, markedSpans, estimateHeight) {
@@ -2006,7 +2006,7 @@ define('skylark-codemirror/primitives/line/line_data',[
             this.height = estimateHeight ? estimateHeight(this) : 1;
         }
         lineNo() {
-            return i.lineNo(this);
+            return m_utils_line.lineNo(this);
         }
     }
     d.eventMixin(Line);
@@ -2022,7 +2022,7 @@ define('skylark-codemirror/primitives/line/line_data',[
         h.attachMarkedSpans(line, markedSpans);
         let estHeight = estimateHeight ? estimateHeight(line) : 1;
         if (estHeight != line.height)
-            i.updateLineHeight(line, estHeight);
+            m_utils_line.updateLineHeight(line, estHeight);
     }
     function cleanUpLine(line) {
         line.parent = null;
@@ -2054,7 +2054,7 @@ define('skylark-codemirror/primitives/line/line_data',[
             if (e.hasBadBidiRects(cm.display.measure) && (order = a.getOrder(line, cm.doc.direction)))
                 builder.addToken = buildTokenBadBidi(builder.addToken, order);
             builder.map = [];
-            let allowFrontierUpdate = lineView != cm.display.externalMeasured && i.lineNo(line);
+            let allowFrontierUpdate = lineView != cm.display.externalMeasured && m_utils_line.lineNo(line);
             insertLineContent(line, builder, g.getLineStyles(cm, line, allowFrontierUpdate));
             if (line.styleClasses) {
                 if (line.styleClasses.bgClass)
@@ -2298,14 +2298,14 @@ define('skylark-codemirror/primitives/line/line_data',[
     function LineView(doc, line, lineN) {
         this.line = line;
         this.rest = h.visualLineContinued(line);
-        this.size = this.rest ? i.lineNo(f.lst(this.rest)) - lineN + 1 : 1;
+        this.size = this.rest ? m_utils_line.lineNo(f.lst(this.rest)) - lineN + 1 : 1;
         this.node = this.text = null;
         this.hidden = h.lineIsHidden(doc, line);
     }
     function buildViewArray(cm, from, to) {
         let array = [], nextPos;
         for (let pos = from; pos < to; pos = nextPos) {
-            let view = new LineView(cm.doc, i.getLine(cm.doc, pos), pos);
+            let view = new LineView(cm.doc, m_utils_line.getLine(cm.doc, pos), pos);
             nextPos = pos + view.size;
             array.push(view);
         }
@@ -3599,6 +3599,435 @@ define('skylark-codemirror/primitives/display/update_lines',[
         visibleLines: visibleLines
     };
 });
+define('skylark-codemirror/primitives/display/view_tracking',[
+    '../line/line_data',
+    '../line/saw_special_spans',
+    '../line/spans',
+    '../measurement/position_measurement',
+    '../util/misc'
+], function (a, b, c, d, e) {
+    'use strict';
+    function regChange(cm, from, to, lendiff) {
+        if (from == null)
+            from = cm.doc.first;
+        if (to == null)
+            to = cm.doc.first + cm.doc.size;
+        if (!lendiff)
+            lendiff = 0;
+        let display = cm.display;
+        if (lendiff && to < display.viewTo && (display.updateLineNumbers == null || display.updateLineNumbers > from))
+            display.updateLineNumbers = from;
+        cm.curOp.viewChanged = true;
+        if (from >= display.viewTo) {
+            if (b.sawCollapsedSpans && c.visualLineNo(cm.doc, from) < display.viewTo)
+                resetView(cm);
+        } else if (to <= display.viewFrom) {
+            if (b.sawCollapsedSpans && c.visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
+                resetView(cm);
+            } else {
+                display.viewFrom += lendiff;
+                display.viewTo += lendiff;
+            }
+        } else if (from <= display.viewFrom && to >= display.viewTo) {
+            resetView(cm);
+        } else if (from <= display.viewFrom) {
+            let cut = viewCuttingPoint(cm, to, to + lendiff, 1);
+            if (cut) {
+                display.view = display.view.slice(cut.index);
+                display.viewFrom = cut.lineN;
+                display.viewTo += lendiff;
+            } else {
+                resetView(cm);
+            }
+        } else if (to >= display.viewTo) {
+            let cut = viewCuttingPoint(cm, from, from, -1);
+            if (cut) {
+                display.view = display.view.slice(0, cut.index);
+                display.viewTo = cut.lineN;
+            } else {
+                resetView(cm);
+            }
+        } else {
+            let cutTop = viewCuttingPoint(cm, from, from, -1);
+            let cutBot = viewCuttingPoint(cm, to, to + lendiff, 1);
+            if (cutTop && cutBot) {
+                display.view = display.view.slice(0, cutTop.index).concat(a.buildViewArray(cm, cutTop.lineN, cutBot.lineN)).concat(display.view.slice(cutBot.index));
+                display.viewTo += lendiff;
+            } else {
+                resetView(cm);
+            }
+        }
+        let ext = display.externalMeasured;
+        if (ext) {
+            if (to < ext.lineN)
+                ext.lineN += lendiff;
+            else if (from < ext.lineN + ext.size)
+                display.externalMeasured = null;
+        }
+    }
+    function regLineChange(cm, line, type) {
+        cm.curOp.viewChanged = true;
+        let display = cm.display, ext = cm.display.externalMeasured;
+        if (ext && line >= ext.lineN && line < ext.lineN + ext.size)
+            display.externalMeasured = null;
+        if (line < display.viewFrom || line >= display.viewTo)
+            return;
+        let lineView = display.view[d.findViewIndex(cm, line)];
+        if (lineView.node == null)
+            return;
+        let arr = lineView.changes || (lineView.changes = []);
+        if (e.indexOf(arr, type) == -1)
+            arr.push(type);
+    }
+    function resetView(cm) {
+        cm.display.viewFrom = cm.display.viewTo = cm.doc.first;
+        cm.display.view = [];
+        cm.display.viewOffset = 0;
+    }
+    function viewCuttingPoint(cm, oldN, newN, dir) {
+        let index = d.findViewIndex(cm, oldN), diff, view = cm.display.view;
+        if (!b.sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
+            return {
+                index: index,
+                lineN: newN
+            };
+        let n = cm.display.viewFrom;
+        for (let i = 0; i < index; i++)
+            n += view[i].size;
+        if (n != oldN) {
+            if (dir > 0) {
+                if (index == view.length - 1)
+                    return null;
+                diff = n + view[index].size - oldN;
+                index++;
+            } else {
+                diff = n - oldN;
+            }
+            oldN += diff;
+            newN += diff;
+        }
+        while (c.visualLineNo(cm.doc, newN) != newN) {
+            if (index == (dir < 0 ? 0 : view.length - 1))
+                return null;
+            newN += dir * view[index - (dir < 0 ? 1 : 0)].size;
+            index += dir;
+        }
+        return {
+            index: index,
+            lineN: newN
+        };
+    }
+    function adjustView(cm, from, to) {
+        let display = cm.display, view = display.view;
+        if (view.length == 0 || from >= display.viewTo || to <= display.viewFrom) {
+            display.view = a.buildViewArray(cm, from, to);
+            display.viewFrom = from;
+        } else {
+            if (display.viewFrom > from)
+                display.view = a.buildViewArray(cm, from, display.viewFrom).concat(display.view);
+            else if (display.viewFrom < from)
+                display.view = display.view.slice(d.findViewIndex(cm, from));
+            display.viewFrom = from;
+            if (display.viewTo < to)
+                display.view = display.view.concat(a.buildViewArray(cm, display.viewTo, to));
+            else if (display.viewTo > to)
+                display.view = display.view.slice(0, d.findViewIndex(cm, to));
+        }
+        display.viewTo = to;
+    }
+    function countDirtyView(cm) {
+        let view = cm.display.view, dirty = 0;
+        for (let i = 0; i < view.length; i++) {
+            let lineView = view[i];
+            if (!lineView.hidden && (!lineView.node || lineView.changes))
+                ++dirty;
+        }
+        return dirty;
+    }
+    return {
+        regChange: regChange,
+        regLineChange: regLineChange,
+        resetView: resetView,
+        adjustView: adjustView,
+        countDirtyView: countDirtyView
+    };
+});
+define('skylark-codemirror/primitives/display/update_display',[
+    '../line/saw_special_spans',
+    '../line/spans',
+    '../line/utils_line',
+    '../measurement/position_measurement',
+    '../util/browser',
+    '../util/dom',
+    '../util/event',
+    '../util/misc',
+    './update_line',
+//    './highlight_worker', // dependence cycle 
+//    './line_numbers',
+//    './scrollbars',
+    './selection',
+    './update_lines',
+    './view_tracking'
+], function (
+    a, 
+    b, 
+    c, 
+    d, 
+    e, 
+    f, 
+    g, 
+    h, 
+    m_update_line, 
+//    j, 
+//    k, 
+//    l, 
+    m, 
+    n, 
+    o
+) {
+    'use strict';
+    class DisplayUpdate {
+        constructor(cm, viewport, force) {
+            let display = cm.display;
+            this.viewport = viewport;
+            this.visible = n.visibleLines(display, cm.doc, viewport);
+            this.editorIsHidden = !display.wrapper.offsetWidth;
+            this.wrapperHeight = display.wrapper.clientHeight;
+            this.wrapperWidth = display.wrapper.clientWidth;
+            this.oldDisplayWidth = d.displayWidth(cm);
+            this.force = force;
+            this.dims = d.getDimensions(cm);
+            this.events = [];
+        }
+        signal(emitter, type) {
+            if (g.hasHandler(emitter, type))
+                this.events.push(arguments);
+        }
+        finish() {
+            for (let i = 0; i < this.events.length; i++)
+                g.signal.apply(null, this.events[i]);
+        }
+    }
+    function maybeClipScrollbars(cm) {
+        let display = cm.display;
+        if (!display.scrollbarsClipped && display.scroller.offsetWidth) {
+            display.nativeBarWidth = display.scroller.offsetWidth - display.scroller.clientWidth;
+            display.heightForcer.style.height = d.scrollGap(cm) + 'px';
+            display.sizer.style.marginBottom = -display.nativeBarWidth + 'px';
+            display.sizer.style.borderRightWidth = d.scrollGap(cm) + 'px';
+            display.scrollbarsClipped = true;
+        }
+    }
+    function selectionSnapshot(cm) {
+        if (cm.hasFocus())
+            return null;
+        let active = f.activeElt();
+        if (!active || !f.contains(cm.display.lineDiv, active))
+            return null;
+        let result = { activeElt: active };
+        if (window.getSelection) {
+            let sel = window.getSelection();
+            if (sel.anchorNode && sel.extend && f.contains(cm.display.lineDiv, sel.anchorNode)) {
+                result.anchorNode = sel.anchorNode;
+                result.anchorOffset = sel.anchorOffset;
+                result.focusNode = sel.focusNode;
+                result.focusOffset = sel.focusOffset;
+            }
+        }
+        return result;
+    }
+    function restoreSelection(snapshot) {
+        if (!snapshot || !snapshot.activeElt || snapshot.activeElt == f.activeElt())
+            return;
+        snapshot.activeElt.focus();
+        if (snapshot.anchorNode && f.contains(document.body, snapshot.anchorNode) && f.contains(document.body, snapshot.focusNode)) {
+            let sel = window.getSelection(), range = document.createRange();
+            range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            sel.extend(snapshot.focusNode, snapshot.focusOffset);
+        }
+    }
+    function updateDisplayIfNeeded(cm, update) {
+        let display = cm.display, doc = cm.doc;
+        if (update.editorIsHidden) {
+            o.resetView(cm);
+            return false;
+        }
+        if (!update.force && update.visible.from >= display.viewFrom && update.visible.to <= display.viewTo && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo) && display.renderedView == display.view && o.countDirtyView(cm) == 0)
+            return false;
+        if (cm.maybeUpdateLineNumberWidth()) { //if (k.maybeUpdateLineNumberWidth(cm)) {
+            o.resetView(cm);
+            update.dims = d.getDimensions(cm);
+        }
+        let end = doc.first + doc.size;
+        let from = Math.max(update.visible.from - cm.options.viewportMargin, doc.first);
+        let to = Math.min(end, update.visible.to + cm.options.viewportMargin);
+        if (display.viewFrom < from && from - display.viewFrom < 20)
+            from = Math.max(doc.first, display.viewFrom);
+        if (display.viewTo > to && display.viewTo - to < 20)
+            to = Math.min(end, display.viewTo);
+        if (a.sawCollapsedSpans) {
+            from = b.visualLineNo(cm.doc, from);
+            to = b.visualLineEndNo(cm.doc, to);
+        }
+        let different = from != display.viewFrom || to != display.viewTo || display.lastWrapHeight != update.wrapperHeight || display.lastWrapWidth != update.wrapperWidth;
+        o.adjustView(cm, from, to);
+        display.viewOffset = b.heightAtLine(c.getLine(cm.doc, display.viewFrom));
+        cm.display.mover.style.top = display.viewOffset + 'px';
+        let toUpdate = o.countDirtyView(cm);
+        if (!different && toUpdate == 0 && !update.force && display.renderedView == display.view && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo))
+            return false;
+        let selSnapshot = selectionSnapshot(cm);
+        if (toUpdate > 4)
+            display.lineDiv.style.display = 'none';
+        patchDisplay(cm, display.updateLineNumbers, update.dims);
+        if (toUpdate > 4)
+            display.lineDiv.style.display = '';
+        display.renderedView = display.view;
+        restoreSelection(selSnapshot);
+        f.removeChildren(display.cursorDiv);
+        f.removeChildren(display.selectionDiv);
+        display.gutters.style.height = display.sizer.style.minHeight = 0;
+        if (different) {
+            display.lastWrapHeight = update.wrapperHeight;
+            display.lastWrapWidth = update.wrapperWidth;
+            cm.startWorker(400); // j.startWorker(cm, 400);
+        }
+        display.updateLineNumbers = null;
+        return true;
+    }
+    function postUpdateDisplay(cm, update) {
+        let viewport = update.viewport;
+        for (let first = true;; first = false) {
+            if (!first || !cm.options.lineWrapping || update.oldDisplayWidth == d.displayWidth(cm)) {
+                if (viewport && viewport.top != null)
+                    viewport = { top: Math.min(cm.doc.height + d.paddingVert(cm.display) - d.displayHeight(cm), viewport.top) };
+                update.visible = n.visibleLines(cm.display, cm.doc, viewport);
+                if (update.visible.from >= cm.display.viewFrom && update.visible.to <= cm.display.viewTo)
+                    break;
+            }
+            if (!updateDisplayIfNeeded(cm, update))
+                break;
+            n.updateHeightsInViewport(cm);
+            let barMeasure = cm.measureForScrollbars(); //l.measureForScrollbars(cm);
+            m.updateSelection(cm);
+            cm.updateScrollbars(barMeasure); //l.updateScrollbars(cm, barMeasure);
+            setDocumentHeight(cm, barMeasure);
+            update.force = false;
+        }
+        update.signal(cm, 'update', cm);
+        if (cm.display.viewFrom != cm.display.reportedViewFrom || cm.display.viewTo != cm.display.reportedViewTo) {
+            update.signal(cm, 'viewportChange', cm, cm.display.viewFrom, cm.display.viewTo);
+            cm.display.reportedViewFrom = cm.display.viewFrom;
+            cm.display.reportedViewTo = cm.display.viewTo;
+        }
+    }
+    function updateDisplaySimple(cm, viewport) {
+        let update = new DisplayUpdate(cm, viewport);
+        if (updateDisplayIfNeeded(cm, update)) {
+            n.updateHeightsInViewport(cm);
+            postUpdateDisplay(cm, update);
+            let barMeasure = l.measureForScrollbars(cm);
+            m.updateSelection(cm);
+            l.updateScrollbars(cm, barMeasure);
+            setDocumentHeight(cm, barMeasure);
+            update.finish();
+        }
+    }
+    function patchDisplay(cm, updateNumbersFrom, dims) {
+        let display = cm.display, lineNumbers = cm.options.lineNumbers;
+        let container = display.lineDiv, cur = container.firstChild;
+        function rm(node) {
+            let next = node.nextSibling;
+            if (e.webkit && e.mac && cm.display.currentWheelTarget == node)
+                node.style.display = 'none';
+            else
+                node.parentNode.removeChild(node);
+            return next;
+        }
+        let view = display.view, lineN = display.viewFrom;
+        for (let i = 0; i < view.length; i++) {
+            let lineView = view[i];
+            if (lineView.hidden) {
+            } else if (!lineView.node || lineView.node.parentNode != container) {
+                let node = m_update_line.buildLineElement(cm, lineView, lineN, dims);
+                container.insertBefore(node, cur);
+            } else {
+                while (cur != lineView.node)
+                    cur = rm(cur);
+                let updateNumber = lineNumbers && updateNumbersFrom != null && updateNumbersFrom <= lineN && lineView.lineNumber;
+                if (lineView.changes) {
+                    if (h.indexOf(lineView.changes, 'gutter') > -1)
+                        updateNumber = false;
+                    m_update_line.updateLineForChanges(cm, lineView, lineN, dims);
+                }
+                if (updateNumber) {
+                    f.removeChildren(lineView.lineNumber);
+                    lineView.lineNumber.appendChild(document.createTextNode(c.lineNumberFor(cm.options, lineN)));
+                }
+                cur = lineView.node.nextSibling;
+            }
+            lineN += lineView.size;
+        }
+        while (cur)
+            cur = rm(cur);
+    }
+    function updateGutterSpace(cm) {
+        let width = cm.display.gutters.offsetWidth;
+        cm.display.sizer.style.marginLeft = width + 'px';
+    }
+    function setDocumentHeight(cm, measure) {
+        cm.display.sizer.style.minHeight = measure.docHeight + 'px';
+        cm.display.heightForcer.style.top = measure.docHeight + 'px';
+        cm.display.gutters.style.height = measure.docHeight + cm.display.barHeight + d.scrollGap(cm) + 'px';
+    }
+    return {
+        DisplayUpdate: DisplayUpdate,
+        maybeClipScrollbars: maybeClipScrollbars,
+        updateDisplayIfNeeded: updateDisplayIfNeeded,
+        postUpdateDisplay: postUpdateDisplay,
+        updateDisplaySimple: updateDisplaySimple,
+        updateGutterSpace: updateGutterSpace,
+        setDocumentHeight: setDocumentHeight
+    };
+});
+define('skylark-codemirror/primitives/display/gutters',[
+    '../util/dom',
+    '../util/misc',
+    './update_display'
+], function (a, b, c) {
+    'use strict';
+    function updateGutters(cm) {
+        let gutters = cm.display.gutters, specs = cm.options.gutters;
+        a.removeChildren(gutters);
+        let i = 0;
+        for (; i < specs.length; ++i) {
+            let gutterClass = specs[i];
+            let gElt = gutters.appendChild(a.elt('div', null, 'CodeMirror-gutter ' + gutterClass));
+            if (gutterClass == 'CodeMirror-linenumbers') {
+                cm.display.lineGutter = gElt;
+                gElt.style.width = (cm.display.lineNumWidth || 1) + 'px';
+            }
+        }
+        gutters.style.display = i ? '' : 'none';
+        c.updateGutterSpace(cm);
+    }
+    function setGuttersForLineNumbers(options) {
+        let found = b.indexOf(options.gutters, 'CodeMirror-linenumbers');
+        if (found == -1 && options.lineNumbers) {
+            options.gutters = options.gutters.concat(['CodeMirror-linenumbers']);
+        } else if (found > -1 && !options.lineNumbers) {
+            options.gutters = options.gutters.slice(0);
+            options.gutters.splice(found, 1);
+        }
+    }
+    return {
+        updateGutters: updateGutters,
+        setGuttersForLineNumbers: setGuttersForLineNumbers
+    };
+});
 define('skylark-codemirror/primitives/display/line_numbers',[
     '../line/utils_line',
     '../measurement/position_measurement',
@@ -3649,6 +4078,66 @@ define('skylark-codemirror/primitives/display/line_numbers',[
         alignHorizontally: alignHorizontally,
         maybeUpdateLineNumberWidth: maybeUpdateLineNumberWidth
     };
+});
+define('skylark-codemirror/primitives/display/highlight_worker',[
+    '../line/highlight',
+    '../modes',
+    '../util/misc',
+    './operations',
+    './view_tracking'
+], function (a, b, c, d, e) {
+    'use strict';
+    function startWorker(cm, time) {
+        if (cm.doc.highlightFrontier < cm.display.viewTo)
+            cm.state.highlight.set(time, c.bind(highlightWorker, cm));
+    }
+    function highlightWorker(cm) {
+        let doc = cm.doc;
+        if (doc.highlightFrontier >= cm.display.viewTo)
+            return;
+        let end = +new Date() + cm.options.workTime;
+        let context = a.getContextBefore(cm, doc.highlightFrontier);
+        let changedLines = [];
+        doc.iter(context.line, Math.min(doc.first + doc.size, cm.display.viewTo + 500), line => {
+            if (context.line >= cm.display.viewFrom) {
+                let oldStyles = line.styles;
+                let resetState = line.text.length > cm.options.maxHighlightLength ? b.copyState(doc.mode, context.state) : null;
+                let highlighted = a.highlightLine(cm, line, context, true);
+                if (resetState)
+                    context.state = resetState;
+                line.styles = highlighted.styles;
+                let oldCls = line.styleClasses, newCls = highlighted.classes;
+                if (newCls)
+                    line.styleClasses = newCls;
+                else if (oldCls)
+                    line.styleClasses = null;
+                let ischange = !oldStyles || oldStyles.length != line.styles.length || oldCls != newCls && (!oldCls || !newCls || oldCls.bgClass != newCls.bgClass || oldCls.textClass != newCls.textClass);
+                for (let i = 0; !ischange && i < oldStyles.length; ++i)
+                    ischange = oldStyles[i] != line.styles[i];
+                if (ischange)
+                    changedLines.push(context.line);
+                line.stateAfter = context.save();
+                context.nextLine();
+            } else {
+                if (line.text.length <= cm.options.maxHighlightLength)
+                    a.processLine(cm, line.text, context);
+                line.stateAfter = context.line % 5 == 0 ? context.save() : null;
+                context.nextLine();
+            }
+            if (+new Date() > end) {
+                startWorker(cm, cm.options.workDelay);
+                return true;
+            }
+        });
+        doc.highlightFrontier = context.line;
+        doc.modeFrontier = Math.max(doc.modeFrontier, context.line);
+        if (changedLines.length)
+            d.runInOp(cm, () => {
+                for (let i = 0; i < changedLines.length; i++)
+                    e.regLineChange(cm, changedLines[i], 'text');
+            });
+    }
+    return { startWorker: startWorker };
 });
 define('skylark-codemirror/primitives/display/scrolling',[
     '../line/pos',
@@ -4226,479 +4715,6 @@ define('skylark-codemirror/primitives/display/operations',[
         operation: operation,
         methodOp: methodOp,
         docMethodOp: docMethodOp
-    };
-});
-define('skylark-codemirror/primitives/display/view_tracking',[
-    '../line/line_data',
-    '../line/saw_special_spans',
-    '../line/spans',
-    '../measurement/position_measurement',
-    '../util/misc'
-], function (a, b, c, d, e) {
-    'use strict';
-    function regChange(cm, from, to, lendiff) {
-        if (from == null)
-            from = cm.doc.first;
-        if (to == null)
-            to = cm.doc.first + cm.doc.size;
-        if (!lendiff)
-            lendiff = 0;
-        let display = cm.display;
-        if (lendiff && to < display.viewTo && (display.updateLineNumbers == null || display.updateLineNumbers > from))
-            display.updateLineNumbers = from;
-        cm.curOp.viewChanged = true;
-        if (from >= display.viewTo) {
-            if (b.sawCollapsedSpans && c.visualLineNo(cm.doc, from) < display.viewTo)
-                resetView(cm);
-        } else if (to <= display.viewFrom) {
-            if (b.sawCollapsedSpans && c.visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
-                resetView(cm);
-            } else {
-                display.viewFrom += lendiff;
-                display.viewTo += lendiff;
-            }
-        } else if (from <= display.viewFrom && to >= display.viewTo) {
-            resetView(cm);
-        } else if (from <= display.viewFrom) {
-            let cut = viewCuttingPoint(cm, to, to + lendiff, 1);
-            if (cut) {
-                display.view = display.view.slice(cut.index);
-                display.viewFrom = cut.lineN;
-                display.viewTo += lendiff;
-            } else {
-                resetView(cm);
-            }
-        } else if (to >= display.viewTo) {
-            let cut = viewCuttingPoint(cm, from, from, -1);
-            if (cut) {
-                display.view = display.view.slice(0, cut.index);
-                display.viewTo = cut.lineN;
-            } else {
-                resetView(cm);
-            }
-        } else {
-            let cutTop = viewCuttingPoint(cm, from, from, -1);
-            let cutBot = viewCuttingPoint(cm, to, to + lendiff, 1);
-            if (cutTop && cutBot) {
-                display.view = display.view.slice(0, cutTop.index).concat(a.buildViewArray(cm, cutTop.lineN, cutBot.lineN)).concat(display.view.slice(cutBot.index));
-                display.viewTo += lendiff;
-            } else {
-                resetView(cm);
-            }
-        }
-        let ext = display.externalMeasured;
-        if (ext) {
-            if (to < ext.lineN)
-                ext.lineN += lendiff;
-            else if (from < ext.lineN + ext.size)
-                display.externalMeasured = null;
-        }
-    }
-    function regLineChange(cm, line, type) {
-        cm.curOp.viewChanged = true;
-        let display = cm.display, ext = cm.display.externalMeasured;
-        if (ext && line >= ext.lineN && line < ext.lineN + ext.size)
-            display.externalMeasured = null;
-        if (line < display.viewFrom || line >= display.viewTo)
-            return;
-        let lineView = display.view[d.findViewIndex(cm, line)];
-        if (lineView.node == null)
-            return;
-        let arr = lineView.changes || (lineView.changes = []);
-        if (e.indexOf(arr, type) == -1)
-            arr.push(type);
-    }
-    function resetView(cm) {
-        cm.display.viewFrom = cm.display.viewTo = cm.doc.first;
-        cm.display.view = [];
-        cm.display.viewOffset = 0;
-    }
-    function viewCuttingPoint(cm, oldN, newN, dir) {
-        let index = d.findViewIndex(cm, oldN), diff, view = cm.display.view;
-        if (!b.sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
-            return {
-                index: index,
-                lineN: newN
-            };
-        let n = cm.display.viewFrom;
-        for (let i = 0; i < index; i++)
-            n += view[i].size;
-        if (n != oldN) {
-            if (dir > 0) {
-                if (index == view.length - 1)
-                    return null;
-                diff = n + view[index].size - oldN;
-                index++;
-            } else {
-                diff = n - oldN;
-            }
-            oldN += diff;
-            newN += diff;
-        }
-        while (c.visualLineNo(cm.doc, newN) != newN) {
-            if (index == (dir < 0 ? 0 : view.length - 1))
-                return null;
-            newN += dir * view[index - (dir < 0 ? 1 : 0)].size;
-            index += dir;
-        }
-        return {
-            index: index,
-            lineN: newN
-        };
-    }
-    function adjustView(cm, from, to) {
-        let display = cm.display, view = display.view;
-        if (view.length == 0 || from >= display.viewTo || to <= display.viewFrom) {
-            display.view = a.buildViewArray(cm, from, to);
-            display.viewFrom = from;
-        } else {
-            if (display.viewFrom > from)
-                display.view = a.buildViewArray(cm, from, display.viewFrom).concat(display.view);
-            else if (display.viewFrom < from)
-                display.view = display.view.slice(d.findViewIndex(cm, from));
-            display.viewFrom = from;
-            if (display.viewTo < to)
-                display.view = display.view.concat(a.buildViewArray(cm, display.viewTo, to));
-            else if (display.viewTo > to)
-                display.view = display.view.slice(0, d.findViewIndex(cm, to));
-        }
-        display.viewTo = to;
-    }
-    function countDirtyView(cm) {
-        let view = cm.display.view, dirty = 0;
-        for (let i = 0; i < view.length; i++) {
-            let lineView = view[i];
-            if (!lineView.hidden && (!lineView.node || lineView.changes))
-                ++dirty;
-        }
-        return dirty;
-    }
-    return {
-        regChange: regChange,
-        regLineChange: regLineChange,
-        resetView: resetView,
-        adjustView: adjustView,
-        countDirtyView: countDirtyView
-    };
-});
-define('skylark-codemirror/primitives/display/highlight_worker',[
-    '../line/highlight',
-    '../modes',
-    '../util/misc',
-    './operations',
-    './view_tracking'
-], function (a, b, c, d, e) {
-    'use strict';
-    function startWorker(cm, time) {
-        if (cm.doc.highlightFrontier < cm.display.viewTo)
-            cm.state.highlight.set(time, c.bind(highlightWorker, cm));
-    }
-    function highlightWorker(cm) {
-        let doc = cm.doc;
-        if (doc.highlightFrontier >= cm.display.viewTo)
-            return;
-        let end = +new Date() + cm.options.workTime;
-        let context = a.getContextBefore(cm, doc.highlightFrontier);
-        let changedLines = [];
-        doc.iter(context.line, Math.min(doc.first + doc.size, cm.display.viewTo + 500), line => {
-            if (context.line >= cm.display.viewFrom) {
-                let oldStyles = line.styles;
-                let resetState = line.text.length > cm.options.maxHighlightLength ? b.copyState(doc.mode, context.state) : null;
-                let highlighted = a.highlightLine(cm, line, context, true);
-                if (resetState)
-                    context.state = resetState;
-                line.styles = highlighted.styles;
-                let oldCls = line.styleClasses, newCls = highlighted.classes;
-                if (newCls)
-                    line.styleClasses = newCls;
-                else if (oldCls)
-                    line.styleClasses = null;
-                let ischange = !oldStyles || oldStyles.length != line.styles.length || oldCls != newCls && (!oldCls || !newCls || oldCls.bgClass != newCls.bgClass || oldCls.textClass != newCls.textClass);
-                for (let i = 0; !ischange && i < oldStyles.length; ++i)
-                    ischange = oldStyles[i] != line.styles[i];
-                if (ischange)
-                    changedLines.push(context.line);
-                line.stateAfter = context.save();
-                context.nextLine();
-            } else {
-                if (line.text.length <= cm.options.maxHighlightLength)
-                    a.processLine(cm, line.text, context);
-                line.stateAfter = context.line % 5 == 0 ? context.save() : null;
-                context.nextLine();
-            }
-            if (+new Date() > end) {
-                startWorker(cm, cm.options.workDelay);
-                return true;
-            }
-        });
-        doc.highlightFrontier = context.line;
-        doc.modeFrontier = Math.max(doc.modeFrontier, context.line);
-        if (changedLines.length)
-            d.runInOp(cm, () => {
-                for (let i = 0; i < changedLines.length; i++)
-                    e.regLineChange(cm, changedLines[i], 'text');
-            });
-    }
-    return { startWorker: startWorker };
-});
-define('skylark-codemirror/primitives/display/update_display',[
-    '../line/saw_special_spans',
-    '../line/spans',
-    '../line/utils_line',
-    '../measurement/position_measurement',
-    '../util/browser',
-    '../util/dom',
-    '../util/event',
-    '../util/misc',
-    './update_line',
-    './highlight_worker',
-    './line_numbers',
-    './scrollbars',
-    './selection',
-    './update_lines',
-    './view_tracking'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) {
-    'use strict';
-    class DisplayUpdate {
-        constructor(cm, viewport, force) {
-            let display = cm.display;
-            this.viewport = viewport;
-            this.visible = n.visibleLines(display, cm.doc, viewport);
-            this.editorIsHidden = !display.wrapper.offsetWidth;
-            this.wrapperHeight = display.wrapper.clientHeight;
-            this.wrapperWidth = display.wrapper.clientWidth;
-            this.oldDisplayWidth = d.displayWidth(cm);
-            this.force = force;
-            this.dims = d.getDimensions(cm);
-            this.events = [];
-        }
-        signal(emitter, type) {
-            if (g.hasHandler(emitter, type))
-                this.events.push(arguments);
-        }
-        finish() {
-            for (let i = 0; i < this.events.length; i++)
-                g.signal.apply(null, this.events[i]);
-        }
-    }
-    function maybeClipScrollbars(cm) {
-        let display = cm.display;
-        if (!display.scrollbarsClipped && display.scroller.offsetWidth) {
-            display.nativeBarWidth = display.scroller.offsetWidth - display.scroller.clientWidth;
-            display.heightForcer.style.height = d.scrollGap(cm) + 'px';
-            display.sizer.style.marginBottom = -display.nativeBarWidth + 'px';
-            display.sizer.style.borderRightWidth = d.scrollGap(cm) + 'px';
-            display.scrollbarsClipped = true;
-        }
-    }
-    function selectionSnapshot(cm) {
-        if (cm.hasFocus())
-            return null;
-        let active = f.activeElt();
-        if (!active || !f.contains(cm.display.lineDiv, active))
-            return null;
-        let result = { activeElt: active };
-        if (window.getSelection) {
-            let sel = window.getSelection();
-            if (sel.anchorNode && sel.extend && f.contains(cm.display.lineDiv, sel.anchorNode)) {
-                result.anchorNode = sel.anchorNode;
-                result.anchorOffset = sel.anchorOffset;
-                result.focusNode = sel.focusNode;
-                result.focusOffset = sel.focusOffset;
-            }
-        }
-        return result;
-    }
-    function restoreSelection(snapshot) {
-        if (!snapshot || !snapshot.activeElt || snapshot.activeElt == f.activeElt())
-            return;
-        snapshot.activeElt.focus();
-        if (snapshot.anchorNode && f.contains(document.body, snapshot.anchorNode) && f.contains(document.body, snapshot.focusNode)) {
-            let sel = window.getSelection(), range = document.createRange();
-            range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            sel.extend(snapshot.focusNode, snapshot.focusOffset);
-        }
-    }
-    function updateDisplayIfNeeded(cm, update) {
-        let display = cm.display, doc = cm.doc;
-        if (update.editorIsHidden) {
-            o.resetView(cm);
-            return false;
-        }
-        if (!update.force && update.visible.from >= display.viewFrom && update.visible.to <= display.viewTo && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo) && display.renderedView == display.view && o.countDirtyView(cm) == 0)
-            return false;
-        if (k.maybeUpdateLineNumberWidth(cm)) {
-            o.resetView(cm);
-            update.dims = d.getDimensions(cm);
-        }
-        let end = doc.first + doc.size;
-        let from = Math.max(update.visible.from - cm.options.viewportMargin, doc.first);
-        let to = Math.min(end, update.visible.to + cm.options.viewportMargin);
-        if (display.viewFrom < from && from - display.viewFrom < 20)
-            from = Math.max(doc.first, display.viewFrom);
-        if (display.viewTo > to && display.viewTo - to < 20)
-            to = Math.min(end, display.viewTo);
-        if (a.sawCollapsedSpans) {
-            from = b.visualLineNo(cm.doc, from);
-            to = b.visualLineEndNo(cm.doc, to);
-        }
-        let different = from != display.viewFrom || to != display.viewTo || display.lastWrapHeight != update.wrapperHeight || display.lastWrapWidth != update.wrapperWidth;
-        o.adjustView(cm, from, to);
-        display.viewOffset = b.heightAtLine(c.getLine(cm.doc, display.viewFrom));
-        cm.display.mover.style.top = display.viewOffset + 'px';
-        let toUpdate = o.countDirtyView(cm);
-        if (!different && toUpdate == 0 && !update.force && display.renderedView == display.view && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo))
-            return false;
-        let selSnapshot = selectionSnapshot(cm);
-        if (toUpdate > 4)
-            display.lineDiv.style.display = 'none';
-        patchDisplay(cm, display.updateLineNumbers, update.dims);
-        if (toUpdate > 4)
-            display.lineDiv.style.display = '';
-        display.renderedView = display.view;
-        restoreSelection(selSnapshot);
-        f.removeChildren(display.cursorDiv);
-        f.removeChildren(display.selectionDiv);
-        display.gutters.style.height = display.sizer.style.minHeight = 0;
-        if (different) {
-            display.lastWrapHeight = update.wrapperHeight;
-            display.lastWrapWidth = update.wrapperWidth;
-            j.startWorker(cm, 400);
-        }
-        display.updateLineNumbers = null;
-        return true;
-    }
-    function postUpdateDisplay(cm, update) {
-        let viewport = update.viewport;
-        for (let first = true;; first = false) {
-            if (!first || !cm.options.lineWrapping || update.oldDisplayWidth == d.displayWidth(cm)) {
-                if (viewport && viewport.top != null)
-                    viewport = { top: Math.min(cm.doc.height + d.paddingVert(cm.display) - d.displayHeight(cm), viewport.top) };
-                update.visible = n.visibleLines(cm.display, cm.doc, viewport);
-                if (update.visible.from >= cm.display.viewFrom && update.visible.to <= cm.display.viewTo)
-                    break;
-            }
-            if (!updateDisplayIfNeeded(cm, update))
-                break;
-            n.updateHeightsInViewport(cm);
-            let barMeasure = l.measureForScrollbars(cm);
-            m.updateSelection(cm);
-            l.updateScrollbars(cm, barMeasure);
-            setDocumentHeight(cm, barMeasure);
-            update.force = false;
-        }
-        update.signal(cm, 'update', cm);
-        if (cm.display.viewFrom != cm.display.reportedViewFrom || cm.display.viewTo != cm.display.reportedViewTo) {
-            update.signal(cm, 'viewportChange', cm, cm.display.viewFrom, cm.display.viewTo);
-            cm.display.reportedViewFrom = cm.display.viewFrom;
-            cm.display.reportedViewTo = cm.display.viewTo;
-        }
-    }
-    function updateDisplaySimple(cm, viewport) {
-        let update = new DisplayUpdate(cm, viewport);
-        if (updateDisplayIfNeeded(cm, update)) {
-            n.updateHeightsInViewport(cm);
-            postUpdateDisplay(cm, update);
-            let barMeasure = l.measureForScrollbars(cm);
-            m.updateSelection(cm);
-            l.updateScrollbars(cm, barMeasure);
-            setDocumentHeight(cm, barMeasure);
-            update.finish();
-        }
-    }
-    function patchDisplay(cm, updateNumbersFrom, dims) {
-        let display = cm.display, lineNumbers = cm.options.lineNumbers;
-        let container = display.lineDiv, cur = container.firstChild;
-        function rm(node) {
-            let next = node.nextSibling;
-            if (e.webkit && e.mac && cm.display.currentWheelTarget == node)
-                node.style.display = 'none';
-            else
-                node.parentNode.removeChild(node);
-            return next;
-        }
-        let view = display.view, lineN = display.viewFrom;
-        for (let i = 0; i < view.length; i++) {
-            let lineView = view[i];
-            if (lineView.hidden) {
-            } else if (!lineView.node || lineView.node.parentNode != container) {
-                let node = i.buildLineElement(cm, lineView, lineN, dims);
-                container.insertBefore(node, cur);
-            } else {
-                while (cur != lineView.node)
-                    cur = rm(cur);
-                let updateNumber = lineNumbers && updateNumbersFrom != null && updateNumbersFrom <= lineN && lineView.lineNumber;
-                if (lineView.changes) {
-                    if (h.indexOf(lineView.changes, 'gutter') > -1)
-                        updateNumber = false;
-                    i.updateLineForChanges(cm, lineView, lineN, dims);
-                }
-                if (updateNumber) {
-                    f.removeChildren(lineView.lineNumber);
-                    lineView.lineNumber.appendChild(document.createTextNode(c.lineNumberFor(cm.options, lineN)));
-                }
-                cur = lineView.node.nextSibling;
-            }
-            lineN += lineView.size;
-        }
-        while (cur)
-            cur = rm(cur);
-    }
-    function updateGutterSpace(cm) {
-        let width = cm.display.gutters.offsetWidth;
-        cm.display.sizer.style.marginLeft = width + 'px';
-    }
-    function setDocumentHeight(cm, measure) {
-        cm.display.sizer.style.minHeight = measure.docHeight + 'px';
-        cm.display.heightForcer.style.top = measure.docHeight + 'px';
-        cm.display.gutters.style.height = measure.docHeight + cm.display.barHeight + d.scrollGap(cm) + 'px';
-    }
-    return {
-        DisplayUpdate: DisplayUpdate,
-        maybeClipScrollbars: maybeClipScrollbars,
-        updateDisplayIfNeeded: updateDisplayIfNeeded,
-        postUpdateDisplay: postUpdateDisplay,
-        updateDisplaySimple: updateDisplaySimple,
-        updateGutterSpace: updateGutterSpace,
-        setDocumentHeight: setDocumentHeight
-    };
-});
-define('skylark-codemirror/primitives/display/gutters',[
-    '../util/dom',
-    '../util/misc',
-    './update_display'
-], function (a, b, c) {
-    'use strict';
-    function updateGutters(cm) {
-        let gutters = cm.display.gutters, specs = cm.options.gutters;
-        a.removeChildren(gutters);
-        let i = 0;
-        for (; i < specs.length; ++i) {
-            let gutterClass = specs[i];
-            let gElt = gutters.appendChild(a.elt('div', null, 'CodeMirror-gutter ' + gutterClass));
-            if (gutterClass == 'CodeMirror-linenumbers') {
-                cm.display.lineGutter = gElt;
-                gElt.style.width = (cm.display.lineNumWidth || 1) + 'px';
-            }
-        }
-        gutters.style.display = i ? '' : 'none';
-        c.updateGutterSpace(cm);
-    }
-    function setGuttersForLineNumbers(options) {
-        let found = b.indexOf(options.gutters, 'CodeMirror-linenumbers');
-        if (found == -1 && options.lineNumbers) {
-            options.gutters = options.gutters.concat(['CodeMirror-linenumbers']);
-        } else if (found > -1 && !options.lineNumbers) {
-            options.gutters = options.gutters.slice(0);
-            options.gutters.splice(found, 1);
-        }
-    }
-    return {
-        updateGutters: updateGutters,
-        setGuttersForLineNumbers: setGuttersForLineNumbers
     };
 });
 define('skylark-codemirror/primitives/display/scroll_events',[
@@ -8889,8 +8905,11 @@ define('skylark-codemirror/primitives/edit/methods',[
     '../util/misc',
     '../util/operation_group',
     '../line/utils_line',
-    '../display/view_tracking'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x) {
+    '../display/view_tracking',
+    '../display/highlight_worker',
+    '../display/line_numbers',
+    '../display/scrollbars'
+], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x,m_highlight_worker,m_line_numbers,m_scrollbars) {
     'use strict';
     return function (CodeMirror) {
         let optionHandlers = CodeMirror.optionHandlers;
@@ -9374,6 +9393,22 @@ define('skylark-codemirror/primitives/edit/methods',[
             },
             getGutterElement: function () {
                 return this.display.gutters;
+            },
+
+            startWorker : function(time) {
+                return m_highlight_worker.startWorker(this,time);
+            },
+
+            maybeUpdateLineNumberWidth : function() {
+                return m_line_numbers.maybeUpdateLineNumberWidth(this);
+            },
+
+            measureForScrollbars : function() {
+                return m_scrollbars.measureForScrollbars(this);
+            },
+
+            updateScrollbars : function(measure) {
+                return m_scrollbars.updateScrollbars(this,measure);
             }
         };
         e.eventMixin(CodeMirror);
@@ -10358,7 +10393,7 @@ define('skylark-codemirror/primitives/edit/fromTextArea',[
     '../util/dom',
     '../util/event',
     '../util/misc'
-], function (a, b, c, d) {
+], function (CodeMirror, b, c, d) {
     'use strict';
     function fromTextArea(textarea, options) {
         options = options ? d.copyObj(options) : {};
@@ -10407,7 +10442,7 @@ define('skylark-codemirror/primitives/edit/fromTextArea',[
             };
         };
         textarea.style.display = 'none';
-        let cm = a.CodeMirror(node => textarea.parentNode.insertBefore(node, textarea.nextSibling), options);
+        let cm = CodeMirror(node => textarea.parentNode.insertBefore(node, textarea.nextSibling), options);
         return cm;
     }
     return { fromTextArea: fromTextArea };
@@ -10489,61 +10524,62 @@ define('skylark-codemirror/primitives/edit/main',[
     '../modes',
     './fromTextArea',
     './legacy'
-], function (a, b, c, d, addEditorMethods, Doc, ContentEditableInput, TextareaInput, e, f, g) {
+], function (CodeMirror, b, c, d, addEditorMethods, Doc, ContentEditableInput, TextareaInput, e, f, g) {
     'use strict';
-    d.defineOptions(a.CodeMirror);
+    d.defineOptions(CodeMirror);
 
-    addEditorMethods(a.CodeMirror);
+    addEditorMethods(CodeMirror);
 
     let dontDelegate = 'iter insert remove copy getEditor constructor'.split(' ');
     for (let prop in Doc.prototype)
         if (Doc.prototype.hasOwnProperty(prop) && c.indexOf(dontDelegate, prop) < 0)
-            a.CodeMirror.prototype[prop] = function (method) {
+            CodeMirror.prototype[prop] = function (method) {
                 return function () {
                     return method.apply(this.doc, arguments);
                 };
             }(Doc.prototype[prop]);
-            
+
     b.eventMixin(Doc);
 
-    a.CodeMirror.inputStyles = {
+    CodeMirror.inputStyles = {
         'textarea': TextareaInput,
         'contenteditable': ContentEditableInput
     };
 
-    a.CodeMirror.defineMode = function (name) {
-        if (!a.CodeMirror.defaults.mode && name != 'null')
-            a.CodeMirror.defaults.mode = name;
+    CodeMirror.defineMode = function (name) {
+        if (!CodeMirror.defaults.mode && name != 'null')
+            CodeMirror.defaults.mode = name;
         e.defineMode.apply(this, arguments);
     };
 
-    a.CodeMirror.defineMIME = e.defineMIME;
+    CodeMirror.defineMIME = e.defineMIME;
 
-    a.CodeMirror.defineMode('null', () => ({ token: stream => stream.skipToEnd() }));
+    CodeMirror.defineMode('null', () => ({ token: stream => stream.skipToEnd() }));
 
-    a.CodeMirror.defineMIME('text/plain', 'null');
+    CodeMirror.defineMIME('text/plain', 'null');
 
-    a.CodeMirror.defineExtension = (name, func) => {
-        a.CodeMirror.prototype[name] = func;
+    CodeMirror.defineExtension = (name, func) => {
+        CodeMirror.prototype[name] = func;
     };
 
-    a.CodeMirror.defineDocExtension = (name, func) => {
+    CodeMirror.defineDocExtension = (name, func) => {
         Doc.prototype[name] = func;
     };
 
-    a.CodeMirror.fromTextArea = f.fromTextArea;
+    CodeMirror.fromTextArea = f.fromTextArea;
 
-    g.addLegacyProps(a.CodeMirror);
-    a.CodeMirror.version = '5.45.0';
+    g.addLegacyProps(CodeMirror);
+    CodeMirror.version = '5.45.0';
     return { 
-        CodeMirror : CodeMirror };
+        CodeMirror : CodeMirror 
+    };
 });
 define('skylark-codemirror/CodeMirror',[
 	'./cm',
 	'./primitives/edit/main'
-], function (a) {
+], function (cm,_main) {
     'use strict';
-    return cm.CodeMirror = a.CodeMirror;
+    return cm.CodeMirror = _main.CodeMirror;
 });
 define('skylark-codemirror/main',[
 	"./cm",
