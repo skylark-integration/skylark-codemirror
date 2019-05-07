@@ -8,13 +8,29 @@ define([
     '../util/event',
     '../util/misc',
     './update_line',
-    './highlight_worker',
-    './line_numbers',
-    './scrollbars',
+//    './highlight_worker', // dependence cycle 
+//    './line_numbers',
+//    './scrollbars',
     './selection',
     './update_lines',
     './view_tracking'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) {
+], function (
+    a, 
+    b, 
+    c, 
+    d, 
+    e, 
+    f, 
+    g, 
+    h, 
+    i, 
+//    j, 
+//    k, 
+//    l, 
+    m, 
+    n, 
+    o
+) {
     'use strict';
     class DisplayUpdate {
         constructor(cm, viewport, force) {
@@ -87,7 +103,7 @@ define([
         }
         if (!update.force && update.visible.from >= display.viewFrom && update.visible.to <= display.viewTo && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo) && display.renderedView == display.view && o.countDirtyView(cm) == 0)
             return false;
-        if (k.maybeUpdateLineNumberWidth(cm)) {
+        if (cm.maybeUpdateLineNumberWidth()) { //if (k.maybeUpdateLineNumberWidth(cm)) {
             o.resetView(cm);
             update.dims = d.getDimensions(cm);
         }
@@ -123,7 +139,7 @@ define([
         if (different) {
             display.lastWrapHeight = update.wrapperHeight;
             display.lastWrapWidth = update.wrapperWidth;
-            j.startWorker(cm, 400);
+            cm.startWorker(400); // j.startWorker(cm, 400);
         }
         display.updateLineNumbers = null;
         return true;
@@ -141,9 +157,9 @@ define([
             if (!updateDisplayIfNeeded(cm, update))
                 break;
             n.updateHeightsInViewport(cm);
-            let barMeasure = l.measureForScrollbars(cm);
+            let barMeasure = cm.measureForScrollbars(); //l.measureForScrollbars(cm);
             m.updateSelection(cm);
-            l.updateScrollbars(cm, barMeasure);
+            cm.updateScrollbars(barMeasure); //l.updateScrollbars(cm, barMeasure);
             setDocumentHeight(cm, barMeasure);
             update.force = false;
         }

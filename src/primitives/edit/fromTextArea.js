@@ -3,7 +3,7 @@ define([
     '../util/dom',
     '../util/event',
     '../util/misc'
-], function (a, b, c, d) {
+], function (CodeMirror, b, c, d) {
     'use strict';
     function fromTextArea(textarea, options) {
         options = options ? d.copyObj(options) : {};
@@ -52,7 +52,7 @@ define([
             };
         };
         textarea.style.display = 'none';
-        let cm = a.CodeMirror(node => textarea.parentNode.insertBefore(node, textarea.nextSibling), options);
+        let cm = CodeMirror(node => textarea.parentNode.insertBefore(node, textarea.nextSibling), options);
         return cm;
     }
     return { fromTextArea: fromTextArea };
