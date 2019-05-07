@@ -23,13 +23,13 @@ define([
     './mouse_events',
     './utils',
     './options'
-], function (a, b, c, d, e, f, g, h, i, j, k, Doc, l, m, n, o, p, q, r, s, t, u, v, w) {
+], function (a, b, c, d, e, f, g, h, i, j, k, Doc, l, m, n, o, p, q, r, s, t, u, v, m_options) {
     'use strict';
     function CodeMirror(place, options) {
         if (!(this instanceof CodeMirror))
             return new CodeMirror(place, options);
         this.options = options = options ? q.copyObj(options) : {};
-        q.copyObj(w.defaults, options, false);
+        q.copyObj(m_options.defaults, options, false);
         c.setGuttersForLineNumbers(options);
         let doc = options.value;
         if (typeof doc == 'string')
@@ -74,9 +74,9 @@ define([
             setTimeout(q.bind(b.onFocus, this), 20);
         else
             b.onBlur(this);
-        for (let opt in w.optionHandlers)
-            if (w.optionHandlers.hasOwnProperty(opt))
-                w.optionHandlers[opt](this, options[opt], w.Init);
+        for (let opt in m_options.optionHandlers)
+            if (m_options.optionHandlers.hasOwnProperty(opt))
+                m_options.optionHandlers[opt](this, options[opt], m_options.Init);
         d.maybeUpdateLineNumberWidth(this);
         if (options.finishInit)
             options.finishInit(this);
@@ -86,9 +86,10 @@ define([
         if (o.webkit && options.lineWrapping && getComputedStyle(display.lineDiv).textRendering == 'optimizelegibility')
             display.lineDiv.style.textRendering = 'auto';
     }
-    CodeMirror.undefined = w.defaults;
-    CodeMirror.undefined = w.optionHandlers;
-    return CodeMirror;
+    
+    CodeMirror.defaults = m_options.defaults;
+    CodeMirror.optionHandlers = m_options.optionHandlers;
+
     function registerEventHandlers(cm) {
         let d = cm.display;
         p.on(d.scroller, 'mousedown', e.operation(cm, u.onMouseDown));

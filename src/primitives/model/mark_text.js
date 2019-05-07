@@ -243,12 +243,12 @@ define([
         return new SharedTextMarker(markers, primary);
     }
     function findSharedMarkers(doc) {
-        return doc.findMarks(d.Pos(doc.first, 0), doc.undefined(d.Pos(doc.lastLine())), m => m.parent);
+        return doc.findMarks(d.Pos(doc.first, 0), doc.clipPos(d.Pos(doc.lastLine())), m => m.parent);
     }
     function copySharedMarkers(doc, markers) {
         for (let i = 0; i < markers.length; i++) {
             let marker = markers[i], pos = marker.find();
-            let mFrom = doc.undefined(pos.from), mTo = doc.undefined(pos.to);
+            let mFrom = doc.clipPos(pos.from), mTo = doc.clipPos(pos.to);
             if (d.cmp(mFrom, mTo)) {
                 let subMark = markText(doc, mFrom, mTo, marker.primary, marker.primary.type);
                 marker.markers.push(subMark);

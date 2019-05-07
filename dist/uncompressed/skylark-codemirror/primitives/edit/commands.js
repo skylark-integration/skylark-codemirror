@@ -103,7 +103,7 @@ define([
                 left: 0,
                 top: top
             }, 'div');
-            if (pos.ch < cm.undefined(pos.line).search(/\S/))
+            if (pos.ch < cm.getLine(pos.line).search(/\S/))
                 return lineStartSmart(cm, range.head);
             return pos;
         }, j.sel_move),
@@ -133,7 +133,7 @@ define([
             let spaces = [], ranges = cm.listSelections(), tabSize = cm.options.tabSize;
             for (let i = 0; i < ranges.length; i++) {
                 let pos = ranges[i].from();
-                let col = j.countColumn(cm.undefined(pos.line), pos.ch, tabSize);
+                let col = j.countColumn(cm.getLine(pos.line), pos.ch, tabSize);
                 spaces.push(j.spaceStr(tabSize - col % tabSize));
             }
             cm.replaceSelections(spaces);

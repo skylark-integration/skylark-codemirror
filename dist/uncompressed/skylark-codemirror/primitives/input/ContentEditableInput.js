@@ -79,7 +79,7 @@ define([
                         text: ranges.text
                     });
                     if (e.type == 'cut') {
-                        cm.undefined(() => {
+                        cm.operation(() => {
                             cm.setSelections(ranges.ranges, 0, o.sel_dontScroll);
                             cm.replaceSelection('', null, 'cut');
                         });
@@ -181,7 +181,7 @@ define([
             this.gracePeriod = setTimeout(() => {
                 this.gracePeriod = false;
                 if (this.selectionChanged())
-                    this.cm.undefined(() => this.cm.curOp.selectionChanged = true);
+                    this.cm.operation(() => this.cm.curOp.selectionChanged = true);
             }, 20);
         }
         showMultipleSelections(info) {
@@ -205,7 +205,7 @@ define([
         focus() {
             if (this.cm.options.readOnly != 'nocursor') {
                 if (!this.selectionInEditor())
-                    this.showSelection(this.undefined(), true);
+                    this.showSelection(this.prepareSelection(), true);
                 this.div.focus();
             }
         }

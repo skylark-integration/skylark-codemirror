@@ -67,9 +67,9 @@ define([
         return result;
     }
     function restoreSelection(snapshot) {
-        if (!snapshot || !snapshot.undefined || snapshot.undefined == f.activeElt())
+        if (!snapshot || !snapshot.activeElt || snapshot.activeElt == f.activeElt())
             return;
-        snapshot.undefined.focus();
+        snapshot.activeElt.focus();
         if (snapshot.anchorNode && f.contains(document.body, snapshot.anchorNode) && f.contains(document.body, snapshot.focusNode)) {
             let sel = window.getSelection(), range = document.createRange();
             range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
@@ -147,9 +147,9 @@ define([
             setDocumentHeight(cm, barMeasure);
             update.force = false;
         }
-        update.undefined(cm, 'update', cm);
+        update.signal(cm, 'update', cm);
         if (cm.display.viewFrom != cm.display.reportedViewFrom || cm.display.viewTo != cm.display.reportedViewTo) {
-            update.undefined(cm, 'viewportChange', cm, cm.display.viewFrom, cm.display.viewTo);
+            update.signal(cm, 'viewportChange', cm, cm.display.viewFrom, cm.display.viewTo);
             cm.display.reportedViewFrom = cm.display.viewFrom;
             cm.display.reportedViewTo = cm.display.viewTo;
         }

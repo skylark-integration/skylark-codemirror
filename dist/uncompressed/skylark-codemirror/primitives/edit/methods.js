@@ -141,7 +141,7 @@ define([
                             break;
                         }
                     }
-                let cut = type ? type.undefined('overlay ') : -1;
+                let cut = type ? type.indexOf('overlay ') : -1;
                 return cut < 0 ? type : cut == 0 ? null : type.slice(0, cut - 1);
             },
             getModeAt: function (pos) {

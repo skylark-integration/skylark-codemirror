@@ -1734,7 +1734,7 @@ define('skylark-codemirror/primitives/line/highlight',[
             this.baseTokenPos = 1;
         }
         lookAhead(n) {
-            let line = this.doc.undefined(this.line + n);
+            let line = this.doc.getLine(this.line + n);
             if (line != null && n > this.maxLookAhead)
                 this.maxLookAhead = n;
             return line;
@@ -1824,7 +1824,7 @@ define('skylark-codemirror/primitives/line/highlight',[
     }
     function getContextBefore(cm, n, precise) {
         let doc = cm.doc, display = cm.display;
-        if (!doc.mode.undefined)
+        if (!doc.mode.startState)
             return new Context(doc, true, n);
         let start = findStartLine(cm, n, precise);
         let saved = start > doc.first && c.getLine(doc, start - 1).stateAfter;
@@ -1853,7 +1853,7 @@ define('skylark-codemirror/primitives/line/highlight',[
     function callBlankLine(mode, state) {
         if (mode.blankLine)
             return mode.blankLine(state);
-        if (!mode.undefined)
+        if (!mode.innerMode)
             return;
         let inner = b.innerMode(mode, state);
         if (inner.mode.blankLine)
@@ -1949,7 +1949,7 @@ define('skylark-codemirror/primitives/line/highlight',[
     }
     function findStartLine(cm, n, precise) {
         let minindent, minline, doc = cm.doc;
-        let lim = precise ? -1 : n - (cm.doc.mode.undefined ? 1000 : 100);
+        let lim = precise ? -1 : n - (cm.doc.mode.innerMode ? 1000 : 100);
         for (let search = n; search > lim; --search) {
             if (search <= doc.first)
                 return doc.first;
@@ -4510,9 +4510,9 @@ define('skylark-codemirror/primitives/display/update_display',[
         return result;
     }
     function restoreSelection(snapshot) {
-        if (!snapshot || !snapshot.undefined || snapshot.undefined == f.activeElt())
+        if (!snapshot || !snapshot.activeElt || snapshot.activeElt == f.activeElt())
             return;
-        snapshot.undefined.focus();
+        snapshot.activeElt.focus();
         if (snapshot.anchorNode && f.contains(document.body, snapshot.anchorNode) && f.contains(document.body, snapshot.focusNode)) {
             let sel = window.getSelection(), range = document.createRange();
             range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
@@ -4590,9 +4590,9 @@ define('skylark-codemirror/primitives/display/update_display',[
             setDocumentHeight(cm, barMeasure);
             update.force = false;
         }
-        update.undefined(cm, 'update', cm);
+        update.signal(cm, 'update', cm);
         if (cm.display.viewFrom != cm.display.reportedViewFrom || cm.display.viewTo != cm.display.reportedViewTo) {
-            update.undefined(cm, 'viewportChange', cm, cm.display.viewFrom, cm.display.viewTo);
+            update.signal(cm, 'viewportChange', cm, cm.display.viewFrom, cm.display.viewTo);
             cm.display.reportedViewFrom = cm.display.viewFrom;
             cm.display.reportedViewTo = cm.display.viewTo;
         }
@@ -6318,12 +6318,12 @@ define('skylark-codemirror/primitives/model/mark_text',[
         return new SharedTextMarker(markers, primary);
     }
     function findSharedMarkers(doc) {
-        return doc.findMarks(d.Pos(doc.first, 0), doc.undefined(d.Pos(doc.lastLine())), m => m.parent);
+        return doc.findMarks(d.Pos(doc.first, 0), doc.clipPos(d.Pos(doc.lastLine())), m => m.parent);
     }
     function copySharedMarkers(doc, markers) {
         for (let i = 0; i < markers.length; i++) {
             let marker = markers[i], pos = marker.find();
-            let mFrom = doc.undefined(pos.from), mTo = doc.undefined(pos.to);
+            let mFrom = doc.clipPos(pos.from), mTo = doc.clipPos(pos.to);
             if (d.cmp(mFrom, mTo)) {
                 let subMark = markText(doc, mFrom, mTo, marker.primary, marker.primary.type);
                 marker.markers.push(subMark);
@@ -7578,7 +7578,7 @@ define('skylark-codemirror/primitives/edit/commands',[
                 left: 0,
                 top: top
             }, 'div');
-            if (pos.ch < cm.undefined(pos.line).search(/\S/))
+            if (pos.ch < cm.getLine(pos.line).search(/\S/))
                 return lineStartSmart(cm, range.head);
             return pos;
         }, j.sel_move),
@@ -7608,7 +7608,7 @@ define('skylark-codemirror/primitives/edit/commands',[
             let spaces = [], ranges = cm.listSelections(), tabSize = cm.options.tabSize;
             for (let i = 0; i < ranges.length; i++) {
                 let pos = ranges[i].from();
-                let col = j.countColumn(cm.undefined(pos.line), pos.ch, tabSize);
+                let col = j.countColumn(cm.getLine(pos.line), pos.ch, tabSize);
                 spaces.push(j.spaceStr(tabSize - col % tabSize));
             }
             cm.replaceSelections(spaces);
@@ -8466,13 +8466,13 @@ define('skylark-codemirror/primitives/edit/CodeMirror',[
     './mouse_events',
     './utils',
     './options'
-], function (a, b, c, d, e, f, g, h, i, j, k, Doc, l, m, n, o, p, q, r, s, t, u, v, w) {
+], function (a, b, c, d, e, f, g, h, i, j, k, Doc, l, m, n, o, p, q, r, s, t, u, v, m_options) {
     'use strict';
     function CodeMirror(place, options) {
         if (!(this instanceof CodeMirror))
             return new CodeMirror(place, options);
         this.options = options = options ? q.copyObj(options) : {};
-        q.copyObj(w.defaults, options, false);
+        q.copyObj(m_options.defaults, options, false);
         c.setGuttersForLineNumbers(options);
         let doc = options.value;
         if (typeof doc == 'string')
@@ -8517,9 +8517,9 @@ define('skylark-codemirror/primitives/edit/CodeMirror',[
             setTimeout(q.bind(b.onFocus, this), 20);
         else
             b.onBlur(this);
-        for (let opt in w.optionHandlers)
-            if (w.optionHandlers.hasOwnProperty(opt))
-                w.optionHandlers[opt](this, options[opt], w.Init);
+        for (let opt in m_options.optionHandlers)
+            if (m_options.optionHandlers.hasOwnProperty(opt))
+                m_options.optionHandlers[opt](this, options[opt], m_options.Init);
         d.maybeUpdateLineNumberWidth(this);
         if (options.finishInit)
             options.finishInit(this);
@@ -8529,9 +8529,10 @@ define('skylark-codemirror/primitives/edit/CodeMirror',[
         if (o.webkit && options.lineWrapping && getComputedStyle(display.lineDiv).textRendering == 'optimizelegibility')
             display.lineDiv.style.textRendering = 'auto';
     }
-    CodeMirror.undefined = w.defaults;
-    CodeMirror.undefined = w.optionHandlers;
-    return CodeMirror;
+    
+    CodeMirror.defaults = m_options.defaults;
+    CodeMirror.optionHandlers = m_options.optionHandlers;
+
     function registerEventHandlers(cm) {
         let d = cm.display;
         p.on(d.scroller, 'mousedown', e.operation(cm, u.onMouseDown));
@@ -9007,7 +9008,7 @@ define('skylark-codemirror/primitives/edit/methods',[
                             break;
                         }
                     }
-                let cut = type ? type.undefined('overlay ') : -1;
+                let cut = type ? type.indexOf('overlay ') : -1;
                 return cut < 0 ? type : cut == 0 ? null : type.slice(0, cut - 1);
             },
             getModeAt: function (pos) {
@@ -9554,7 +9555,7 @@ define('skylark-codemirror/primitives/input/ContentEditableInput',[
                         text: ranges.text
                     });
                     if (e.type == 'cut') {
-                        cm.undefined(() => {
+                        cm.operation(() => {
                             cm.setSelections(ranges.ranges, 0, o.sel_dontScroll);
                             cm.replaceSelection('', null, 'cut');
                         });
@@ -9656,7 +9657,7 @@ define('skylark-codemirror/primitives/input/ContentEditableInput',[
             this.gracePeriod = setTimeout(() => {
                 this.gracePeriod = false;
                 if (this.selectionChanged())
-                    this.cm.undefined(() => this.cm.curOp.selectionChanged = true);
+                    this.cm.operation(() => this.cm.curOp.selectionChanged = true);
             }, 20);
         }
         showMultipleSelections(info) {
@@ -9680,7 +9681,7 @@ define('skylark-codemirror/primitives/input/ContentEditableInput',[
         focus() {
             if (this.cm.options.readOnly != 'nocursor') {
                 if (!this.selectionInEditor())
-                    this.showSelection(this.undefined(), true);
+                    this.showSelection(this.prepareSelection(), true);
                 this.div.focus();
             }
         }
@@ -10044,7 +10045,7 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             this.prevInput = '';
             this.pollingFast = false;
             this.polling = new l.Delayed();
-            this.undefined = false;
+            this.hasSelection = false;
             this.composing = null;
         }
         init(display) {
@@ -10055,8 +10056,8 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             if (h.ios)
                 te.style.width = '0px';
             j.on(te, 'input', () => {
-                if (h.ie && h.ie_version >= 9 && this.undefined)
-                    this.undefined = null;
+                if (h.ie && h.ie_version >= 9 && this.hasSelection)
+                    this.hasSelection = null;
                 input.poll();
             });
             j.on(te, 'paste', e => {
@@ -10162,11 +10163,11 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
                 if (cm.state.focused)
                     i.selectInput(this.textarea);
                 if (h.ie && h.ie_version >= 9)
-                    this.undefined = content;
+                    this.hasSelection = content;
             } else if (!typing) {
                 this.prevInput = this.textarea.value = '';
                 if (h.ie && h.ie_version >= 9)
-                    this.undefined = null;
+                    this.hasSelection = null;
             }
         }
         getField() {
@@ -10223,7 +10224,7 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             let text = input.value;
             if (text == prevInput && !cm.somethingSelected())
                 return false;
-            if (h.ie && h.ie_version >= 9 && this.undefined === text || h.mac && /[\uf700-\uf7ff]/.test(text)) {
+            if (h.ie && h.ie_version >= 9 && this.hasSelection === text || h.mac && /[\uf700-\uf7ff]/.test(text)) {
                 cm.display.input.reset();
                 return false;
             }
@@ -10258,7 +10259,7 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
         }
         onKeyPress() {
             if (h.ie && h.ie_version >= 9)
-                this.undefined = null;
+                this.hasSelection = null;
             this.fastPoll();
         }
         onContextMenu(e) {
@@ -10432,47 +10433,47 @@ define('skylark-codemirror/primitives/edit/legacy',[
 ], function (a, b, c, d, e, f, g, Doc, h, i, j, k, l, m, n, StringStream, o) {
     'use strict';
     function addLegacyProps(CodeMirror) {
-        CodeMirror.undefined = l.off;
-        CodeMirror.undefined = l.on;
-        CodeMirror.undefined = b.wheelEventPixels;
+        CodeMirror.off = l.off;
+        CodeMirror.on = l.on;
+        CodeMirror.wheelEventPixels = b.wheelEventPixels;
         CodeMirror.Doc = Doc;
         CodeMirror.splitLines = m.splitLinesAuto;
-        CodeMirror.undefined = n.countColumn;
-        CodeMirror.undefined = n.findColumn;
+        CodeMirror.countColumn = n.countColumn;
+        CodeMirror.findColumn = n.findColumn;
         CodeMirror.isWordChar = n.isWordCharBasic;
-        CodeMirror.undefined = n.Pass;
-        CodeMirror.undefined = l.signal;
-        CodeMirror.undefined = e.Line;
-        CodeMirror.undefined = g.changeEnd;
-        CodeMirror.undefined = a.scrollbarModel;
-        CodeMirror.undefined = f.Pos;
+        CodeMirror.Pass = n.Pass;
+        CodeMirror.signal = l.signal;
+        CodeMirror.Line = e.Line;
+        CodeMirror.changeEnd = g.changeEnd;
+        CodeMirror.scrollbarModel = a.scrollbarModel;
+        CodeMirror.Pos = f.Pos;
         CodeMirror.cmpPos = f.cmp;
-        CodeMirror.undefined = j.modes;
-        CodeMirror.undefined = j.mimeModes;
-        CodeMirror.undefined = j.resolveMode;
-        CodeMirror.undefined = j.getMode;
-        CodeMirror.undefined = j.modeExtensions;
-        CodeMirror.undefined = j.extendMode;
-        CodeMirror.undefined = j.copyState;
-        CodeMirror.undefined = j.startState;
-        CodeMirror.undefined = j.innerMode;
-        CodeMirror.undefined = o.commands;
-        CodeMirror.undefined = c.keyMap;
-        CodeMirror.undefined = c.keyName;
-        CodeMirror.undefined = c.isModifierKey;
-        CodeMirror.undefined = c.lookupKey;
-        CodeMirror.undefined = c.normalizeKeyMap;
+        CodeMirror.modes = j.modes;
+        CodeMirror.mimeModes = j.mimeModes;
+        CodeMirror.resolveMode = j.resolveMode;
+        CodeMirror.getMode = j.getMode;
+        CodeMirror.modeExtensions = j.modeExtensions;
+        CodeMirror.extendMode = j.extendMode;
+        CodeMirror.copyState = j.copyState;
+        CodeMirror.startState = j.startState;
+        CodeMirror.innerMode = j.innerMode;
+        CodeMirror.commands = o.commands;
+        CodeMirror.keyMap = c.keyMap;
+        CodeMirror.keyName = c.keyName;
+        CodeMirror.isModifierKey = c.isModifierKey;
+        CodeMirror.lookupKey = c.lookupKey;
+        CodeMirror.normalizeKeyMap = c.normalizeKeyMap;
         CodeMirror.StringStream = StringStream;
-        CodeMirror.undefined = i.SharedTextMarker;
-        CodeMirror.undefined = i.TextMarker;
-        CodeMirror.undefined = h.LineWidget;
-        CodeMirror.undefined = l.e_preventDefault;
-        CodeMirror.undefined = l.e_stopPropagation;
-        CodeMirror.undefined = l.e_stop;
-        CodeMirror.undefined = k.addClass;
-        CodeMirror.undefined = k.contains;
-        CodeMirror.undefined = k.rmClass;
-        CodeMirror.undefined = d.keyNames;
+        CodeMirror.SharedTextMarker = i.SharedTextMarker;
+        CodeMirror.TextMarker = i.TextMarker;
+        CodeMirror.LineWidget = h.LineWidget;
+        CodeMirror.e_preventDefault = l.e_preventDefault;
+        CodeMirror.e_stopPropagation = l.e_stopPropagation;
+        CodeMirror.e_stop = l.e_stop;
+        CodeMirror.addClass = k.addClass;
+        CodeMirror.contains = k.contains;
+        CodeMirror.rmClass = k.rmClass;
+        CodeMirror.keyNames = d.keyNames;
     }
     return { addLegacyProps: addLegacyProps };
 });
@@ -10491,7 +10492,9 @@ define('skylark-codemirror/primitives/edit/main',[
 ], function (a, b, c, d, addEditorMethods, Doc, ContentEditableInput, TextareaInput, e, f, g) {
     'use strict';
     d.defineOptions(a.CodeMirror);
+
     addEditorMethods(a.CodeMirror);
+
     let dontDelegate = 'iter insert remove copy getEditor constructor'.split(' ');
     for (let prop in Doc.prototype)
         if (Doc.prototype.hasOwnProperty(prop) && c.indexOf(dontDelegate, prop) < 0)
@@ -10500,26 +10503,36 @@ define('skylark-codemirror/primitives/edit/main',[
                     return method.apply(this.doc, arguments);
                 };
             }(Doc.prototype[prop]);
+            
     b.eventMixin(Doc);
+
     a.CodeMirror.inputStyles = {
         'textarea': TextareaInput,
         'contenteditable': ContentEditableInput
     };
-    a.CodeMirror.undefined = function (name) {
+
+    a.CodeMirror.defineMode = function (name) {
         if (!a.CodeMirror.defaults.mode && name != 'null')
             a.CodeMirror.defaults.mode = name;
         e.defineMode.apply(this, arguments);
     };
-    a.CodeMirror.undefined = e.defineMIME;
-    a.CodeMirror.undefined('null', () => ({ token: stream => stream.skipToEnd() }));
-    a.CodeMirror.undefined('text/plain', 'null');
+
+    a.CodeMirror.defineMIME = e.defineMIME;
+
+    a.CodeMirror.defineMode('null', () => ({ token: stream => stream.skipToEnd() }));
+
+    a.CodeMirror.defineMIME('text/plain', 'null');
+
     a.CodeMirror.defineExtension = (name, func) => {
         a.CodeMirror.prototype[name] = func;
     };
+
     a.CodeMirror.defineDocExtension = (name, func) => {
         Doc.prototype[name] = func;
     };
-    a.CodeMirror.undefined = f.fromTextArea;
+
+    a.CodeMirror.fromTextArea = f.fromTextArea;
+
     g.addLegacyProps(a.CodeMirror);
     a.CodeMirror.version = '5.45.0';
     return { 

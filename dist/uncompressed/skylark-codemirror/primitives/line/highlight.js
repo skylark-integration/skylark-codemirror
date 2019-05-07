@@ -22,7 +22,7 @@ define([
             this.baseTokenPos = 1;
         }
         lookAhead(n) {
-            let line = this.doc.undefined(this.line + n);
+            let line = this.doc.getLine(this.line + n);
             if (line != null && n > this.maxLookAhead)
                 this.maxLookAhead = n;
             return line;
@@ -112,7 +112,7 @@ define([
     }
     function getContextBefore(cm, n, precise) {
         let doc = cm.doc, display = cm.display;
-        if (!doc.mode.undefined)
+        if (!doc.mode.startState)
             return new Context(doc, true, n);
         let start = findStartLine(cm, n, precise);
         let saved = start > doc.first && c.getLine(doc, start - 1).stateAfter;
@@ -141,7 +141,7 @@ define([
     function callBlankLine(mode, state) {
         if (mode.blankLine)
             return mode.blankLine(state);
-        if (!mode.undefined)
+        if (!mode.innerMode)
             return;
         let inner = b.innerMode(mode, state);
         if (inner.mode.blankLine)
@@ -237,7 +237,7 @@ define([
     }
     function findStartLine(cm, n, precise) {
         let minindent, minline, doc = cm.doc;
-        let lim = precise ? -1 : n - (cm.doc.mode.undefined ? 1000 : 100);
+        let lim = precise ? -1 : n - (cm.doc.mode.innerMode ? 1000 : 100);
         for (let search = n; search > lim; --search) {
             if (search <= doc.first)
                 return doc.first;

@@ -19,7 +19,7 @@ define([
             this.prevInput = '';
             this.pollingFast = false;
             this.polling = new l.Delayed();
-            this.undefined = false;
+            this.hasSelection = false;
             this.composing = null;
         }
         init(display) {
@@ -30,8 +30,8 @@ define([
             if (h.ios)
                 te.style.width = '0px';
             j.on(te, 'input', () => {
-                if (h.ie && h.ie_version >= 9 && this.undefined)
-                    this.undefined = null;
+                if (h.ie && h.ie_version >= 9 && this.hasSelection)
+                    this.hasSelection = null;
                 input.poll();
             });
             j.on(te, 'paste', e => {
@@ -137,11 +137,11 @@ define([
                 if (cm.state.focused)
                     i.selectInput(this.textarea);
                 if (h.ie && h.ie_version >= 9)
-                    this.undefined = content;
+                    this.hasSelection = content;
             } else if (!typing) {
                 this.prevInput = this.textarea.value = '';
                 if (h.ie && h.ie_version >= 9)
-                    this.undefined = null;
+                    this.hasSelection = null;
             }
         }
         getField() {
@@ -198,7 +198,7 @@ define([
             let text = input.value;
             if (text == prevInput && !cm.somethingSelected())
                 return false;
-            if (h.ie && h.ie_version >= 9 && this.undefined === text || h.mac && /[\uf700-\uf7ff]/.test(text)) {
+            if (h.ie && h.ie_version >= 9 && this.hasSelection === text || h.mac && /[\uf700-\uf7ff]/.test(text)) {
                 cm.display.input.reset();
                 return false;
             }
@@ -233,7 +233,7 @@ define([
         }
         onKeyPress() {
             if (h.ie && h.ie_version >= 9)
-                this.undefined = null;
+                this.hasSelection = null;
             this.fastPoll();
         }
         onContextMenu(e) {
