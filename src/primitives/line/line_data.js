@@ -8,7 +8,7 @@ define([
     './highlight',
     './spans',
     './utils_line'
-], function (a, b, c, d, e, f, g, h, i) {
+], function (a, b, c, d, e, f, g, h, m_utils_line) {
     'use strict';
     class Line {
         constructor(text, markedSpans, estimateHeight) {
@@ -17,7 +17,7 @@ define([
             this.height = estimateHeight ? estimateHeight(this) : 1;
         }
         lineNo() {
-            return i.lineNo(this);
+            return m_utils_line.lineNo(this);
         }
     }
     d.eventMixin(Line);
@@ -33,7 +33,7 @@ define([
         h.attachMarkedSpans(line, markedSpans);
         let estHeight = estimateHeight ? estimateHeight(line) : 1;
         if (estHeight != line.height)
-            i.updateLineHeight(line, estHeight);
+            m_utils_line.updateLineHeight(line, estHeight);
     }
     function cleanUpLine(line) {
         line.parent = null;
@@ -65,7 +65,7 @@ define([
             if (e.hasBadBidiRects(cm.display.measure) && (order = a.getOrder(line, cm.doc.direction)))
                 builder.addToken = buildTokenBadBidi(builder.addToken, order);
             builder.map = [];
-            let allowFrontierUpdate = lineView != cm.display.externalMeasured && i.lineNo(line);
+            let allowFrontierUpdate = lineView != cm.display.externalMeasured && m_utils_line.lineNo(line);
             insertLineContent(line, builder, g.getLineStyles(cm, line, allowFrontierUpdate));
             if (line.styleClasses) {
                 if (line.styleClasses.bgClass)
@@ -309,14 +309,14 @@ define([
     function LineView(doc, line, lineN) {
         this.line = line;
         this.rest = h.visualLineContinued(line);
-        this.size = this.rest ? i.lineNo(f.lst(this.rest)) - lineN + 1 : 1;
+        this.size = this.rest ? m_utils_line.lineNo(f.lst(this.rest)) - lineN + 1 : 1;
         this.node = this.text = null;
         this.hidden = h.lineIsHidden(doc, line);
     }
     function buildViewArray(cm, from, to) {
         let array = [], nextPos;
         for (let pos = from; pos < to; pos = nextPos) {
-            let view = new LineView(cm.doc, i.getLine(cm.doc, pos), pos);
+            let view = new LineView(cm.doc, m_utils_line.getLine(cm.doc, pos), pos);
             nextPos = pos + view.size;
             array.push(view);
         }

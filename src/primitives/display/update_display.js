@@ -23,7 +23,7 @@ define([
     f, 
     g, 
     h, 
-    i, 
+    m_update_line, 
 //    j, 
 //    k, 
 //    l, 
@@ -198,7 +198,7 @@ define([
             let lineView = view[i];
             if (lineView.hidden) {
             } else if (!lineView.node || lineView.node.parentNode != container) {
-                let node = i.buildLineElement(cm, lineView, lineN, dims);
+                let node = m_update_line.buildLineElement(cm, lineView, lineN, dims);
                 container.insertBefore(node, cur);
             } else {
                 while (cur != lineView.node)
@@ -207,7 +207,7 @@ define([
                 if (lineView.changes) {
                     if (h.indexOf(lineView.changes, 'gutter') > -1)
                         updateNumber = false;
-                    i.updateLineForChanges(cm, lineView, lineN, dims);
+                    m_update_line.updateLineForChanges(cm, lineView, lineN, dims);
                 }
                 if (updateNumber) {
                     f.removeChildren(lineView.lineNumber);
