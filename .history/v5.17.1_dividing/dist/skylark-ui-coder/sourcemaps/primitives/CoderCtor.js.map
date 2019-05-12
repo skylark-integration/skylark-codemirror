@@ -1,0 +1,1 @@
+{"version":3,"sources":["primitives/CoderCtor.js"],"names":["define","Evented","inherit","CoderCtorName"],"mappings":";;;;;;;AAAAA,QACC,yBACC,SAASC,GACV,MAAOA,GAAQC,SACdC,cAAgB","file":"../../primitives/CoderCtor.js","sourcesContent":["define([\r\n\t\"skylark-langx/Evented\"\r\n],function(Evented){\r\n\treturn Evented.inherit({\r\n\t\tCoderCtorName : \"Coder\"\r\n\t});\r\n})"]}

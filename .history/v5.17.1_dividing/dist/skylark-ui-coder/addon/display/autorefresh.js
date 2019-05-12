@@ -1,0 +1,9 @@
+/**
+ * skylark-ui-coder - The skylark coder widget
+ * @author Hudaokeji, Inc.
+ * @version v0.9.0
+ * @link https://github.com/skylarkui/skylark-ui-coder/
+ * @license MIT
+ */
+define(["../../Coder"],function(e){"use strict";function t(t,u){function i(){t.display.wrapper.offsetHeight?(o(t,u),t.display.lastWrapHeight!=t.display.wrapper.clientHeight&&t.refresh()):u.timeout=setTimeout(i,u.delay)}u.timeout=setTimeout(i,u.delay),u.hurry=function(){clearTimeout(u.timeout),u.timeout=setTimeout(i,50)},e.on(window,"mouseup",u.hurry),e.on(window,"keyup",u.hurry)}function o(t,o){clearTimeout(o.timeout),e.off(window,"mouseup",o.hurry),e.off(window,"keyup",o.hurry)}e.defineOption("autoRefresh",!1,function(e,u){e.state.autoRefresh&&(o(e,e.state.autoRefresh),e.state.autoRefresh=null),u&&0==e.display.wrapper.offsetHeight&&t(e,e.state.autoRefresh={delay:u.delay||250})})});
+//# sourceMappingURL=../../sourcemaps/addon/display/autorefresh.js.map

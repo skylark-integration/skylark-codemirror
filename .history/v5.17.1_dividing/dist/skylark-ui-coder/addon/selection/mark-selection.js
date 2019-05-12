@@ -1,0 +1,9 @@
+/**
+ * skylark-ui-coder - The skylark coder widget
+ * @author Hudaokeji, Inc.
+ * @version v0.9.0
+ * @link https://github.com/skylarkui/skylark-ui-coder/
+ * @license MIT
+ */
+define(["../../Coder"],function(e){"use strict";function t(e){e.operation(function(){l(e)})}function n(e){e.state.markedSelection.length&&e.operation(function(){r(e)})}function o(e,t,n,o){if(0!=c(t,n))for(var r=e.state.markedSelection,i=e.state.markedSelectionStyle,l=t.line;;){var s=l==t.line?t:a(l,0),u=l+f,d=u>=n.line,m=d?n:a(u,0),S=e.markText(s,m,{className:i});if(null==o?r.push(S):r.splice(o++,0,S),d)break;l=u}}function r(e){for(var t=e.state.markedSelection,n=0;n<t.length;++n)t[n].clear();t.length=0}function i(e){r(e);for(var t=e.listSelections(),n=0;n<t.length;n++)o(e,t[n].from(),t[n].to())}function l(e){if(!e.somethingSelected())return r(e);if(e.listSelections().length>1)return i(e);var t=e.getCursor("start"),n=e.getCursor("end"),l=e.state.markedSelection;if(!l.length)return o(e,t,n);var a=l[0].find(),s=l[l.length-1].find();if(!a||!s||n.line-t.line<f||c(t,s.to)>=0||c(n,a.from)<=0)return i(e);for(;c(t,a.from)>0;)l.shift().clear(),a=l[0].find();for(c(t,a.from)<0&&(a.to.line-t.line<f?(l.shift().clear(),o(e,t,a.to,0)):o(e,t,a.from,0));c(n,s.to)<0;)l.pop().clear(),s=l[l.length-1].find();c(n,s.to)>0&&(n.line-s.from.line<f?(l.pop().clear(),o(e,s.from,n)):o(e,s.to,n))}e.defineOption("styleSelectedText",!1,function(o,l,f){var a=f&&f!=e.Init;l&&!a?(o.state.markedSelection=[],o.state.markedSelectionStyle="string"==typeof l?l:"CodeMirror-selectedtext",i(o),o.on("cursorActivity",t),o.on("change",n)):!l&&a&&(o.off("cursorActivity",t),o.off("change",n),r(o),o.state.markedSelection=o.state.markedSelectionStyle=null)});var f=8,a=e.Pos,c=e.cmpPos});
+//# sourceMappingURL=../../sourcemaps/addon/selection/mark-selection.js.map

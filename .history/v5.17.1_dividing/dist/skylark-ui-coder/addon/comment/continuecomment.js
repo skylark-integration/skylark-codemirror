@@ -1,0 +1,9 @@
+/**
+ * skylark-ui-coder - The skylark coder widget
+ * @author Hudaokeji, Inc.
+ * @version v0.9.0
+ * @link https://github.com/skylarkui/skylark-ui-coder/
+ * @license MIT
+ */
+define(["../../Coder"],function(e){function n(n){if(n.getOption("disableInput"))return e.Pass;for(var o,i=n.listSelections(),l=[],r=0;r<i.length;r++){var m=i[r].head,s=n.getTokenAt(m);if("comment"!=s.type)return e.Pass;var a=e.innerMode(n.getMode(),s.state).mode;if(o){if(o!=a)return e.Pass}else o=a;var c=null;if(o.blockCommentStart&&o.blockCommentContinue){var f,u=s.string.indexOf(o.blockCommentEnd),C=n.getRange(e.Pos(m.line,0),e.Pos(m.line,s.end));if(u!=-1&&u==s.string.length-o.blockCommentEnd.length&&m.ch>=u);else if(0==s.string.indexOf(o.blockCommentStart)){if(c=C.slice(0,s.start),!/^\s*$/.test(c)){c="";for(var d=0;d<s.start;++d)c+=" "}}else(f=C.indexOf(o.blockCommentContinue))!=-1&&f+o.blockCommentContinue.length>s.start&&/^\s*$/.test(C.slice(0,f))&&(c=C.slice(0,f));null!=c&&(c+=o.blockCommentContinue)}if(null==c&&o.lineComment&&t(n)){var g=n.getLine(m.line),f=g.indexOf(o.lineComment);f>-1&&(c=g.slice(0,f),/\S/.test(c)?c=null:c+=o.lineComment+g.slice(f+o.lineComment.length).match(/^\s*/)[0])}if(null==c)return e.Pass;l[r]="\n"+c}n.operation(function(){for(var e=i.length-1;e>=0;e--)n.replaceRange(l[e],i[e].from(),i[e].to(),"+insert")})}function t(e){var n=e.getOption("continueComments");return!n||"object"!=typeof n||n.continueLineComment!==!1}for(var o=["clike","css","javascript"],i=0;i<o.length;++i)e.extendMode(o[i],{blockCommentContinue:" * "});e.defineOption("continueComments",null,function(t,o,i){if(i&&i!=e.Init&&t.removeKeyMap("continueComment"),o){var l="Enter";"string"==typeof o?l=o:"object"==typeof o&&o.key&&(l=o.key);var r={name:"continueComment"};r[l]=n,t.addKeyMap(r)}})});
+//# sourceMappingURL=../../sourcemaps/addon/comment/continuecomment.js.map

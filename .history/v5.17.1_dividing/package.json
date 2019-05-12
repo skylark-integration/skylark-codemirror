@@ -1,0 +1,35 @@
+{
+  "name": "skylark-ui-coder",
+  "description": "The skylark coder widget",
+  "version": "0.9.0",
+  "keywords": [
+    "css",
+    "less",
+    "mobile-first",
+    "responsive",
+    "front-end",
+    "framework",
+    "web"
+  ],
+  "homepage": "https://github.com/skylarkui/skylark-ui-coder/",
+  "author": "Hudaokeji, Inc.",
+  "scripts": {
+    "build": "sbundle build ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skylarkui/skylark-ui-coder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/skylarkui/skylark-ui-coder/issues"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "skylark-langx": "https://github.com/skylarklangx/skylark-langx#master",
+    "skylark-utils": "https://github.com/skylarkutils/skylark-utils#master",
+    "skylark-ui-swt": "https://github.com/skylarkui/skylark-ui-swt#master"
+  },
+  "engines": {
+    "node": ">=0.10.1"
+  }
+}
