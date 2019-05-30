@@ -11,7 +11,7 @@ define([
     '../util/misc',
     '../display/update_line',
     './widgets'
-], function (a, b, c, d, e, f, g, h, i, j, k, l) {
+], function (line_data, line_pos, spans, utils_line, bidi, browser, dom, events, feature_detection, misc, update_line, widgets) {
     'use strict';
     function paddingTop(display) {
         return display.lineSpace.offsetTop;
@@ -22,7 +22,7 @@ define([
     function paddingH(display) {
         if (display.cachedPaddingH)
             return display.cachedPaddingH;
-        let e = g.removeChildrenAndAdd(display.measure, g.elt('pre', 'x'));
+        let e = dom.removeChildrenAndAdd(display.measure, dom.elt('pre', 'x'));
         let style = window.getComputedStyle ? window.getComputedStyle(e) : e.currentStyle;
         let data = {
             left: parseInt(style.paddingLeft),
@@ -33,7 +33,7 @@ define([
         return data;
     }
     function scrollGap(cm) {
-        return j.scrollerGap - cm.display.nativeBarWidth;
+        return misc.scrollerGap - cm.display.nativeBarWidth;
     }
     function displayWidth(cm) {
         return cm.display.scroller.clientWidth - scrollGap(cm) - cm.display.barWidth;
@@ -71,7 +71,7 @@ define([
                     cache: lineView.measure.caches[i]
                 };
         for (let i = 0; i < lineView.rest.length; i++)
-            if (d.lineNo(lineView.rest[i]) > lineN)
+            if (utils_line.lineNo(lineView.rest[i]) > lineN)
                 return {
                     map: lineView.measure.maps[i],
                     cache: lineView.measure.caches[i],
@@ -79,13 +79,13 @@ define([
                 };
     }
     function updateExternalMeasurement(cm, line) {
-        line = c.visualLine(line);
-        let lineN = d.lineNo(line);
-        let view = cm.display.externalMeasured = new a.LineView(cm.doc, line, lineN);
+        line = spans.visualLine(line);
+        let lineN = utils_line.lineNo(line);
+        let view = cm.display.externalMeasured = new line_data.LineView(cm.doc, line, lineN);
         view.lineN = lineN;
-        let built = view.built = a.buildLineContent(cm, view);
+        let built = view.built = line_data.buildLineContent(cm, view);
         view.text = built.pre;
-        g.removeChildrenAndAdd(cm.display.lineMeasure, built.pre);
+        dom.removeChildrenAndAdd(cm.display.lineMeasure, built.pre);
         return view;
     }
     function measureChar(cm, line, ch, bias) {
@@ -99,12 +99,12 @@ define([
             return ext;
     }
     function prepareMeasureForLine(cm, line) {
-        let lineN = d.lineNo(line);
+        let lineN = utils_line.lineNo(line);
         let view = findViewForLine(cm, lineN);
         if (view && !view.text) {
             view = null;
         } else if (view && view.changes) {
-            k.updateLineForChanges(cm, view, lineN, getDimensions(cm));
+            update_line.updateLineForChanges(cm, view, lineN, getDimensions(cm));
             cm.curOp.forceUpdate = true;
         }
         if (!view)
@@ -214,21 +214,21 @@ define([
         let rect;
         if (node.nodeType == 3) {
             for (let i = 0; i < 4; i++) {
-                while (start && j.isExtendingChar(prepared.line.text.charAt(place.coverStart + start)))
+                while (start && misc.isExtendingChar(prepared.line.text.charAt(place.coverStart + start)))
                     --start;
-                while (place.coverStart + end < place.coverEnd && j.isExtendingChar(prepared.line.text.charAt(place.coverStart + end)))
+                while (place.coverStart + end < place.coverEnd && misc.isExtendingChar(prepared.line.text.charAt(place.coverStart + end)))
                     ++end;
-                if (f.ie && f.ie_version < 9 && start == 0 && end == place.coverEnd - place.coverStart)
+                if (browser.ie && browser.ie_version < 9 && start == 0 && end == place.coverEnd - place.coverStart)
                     rect = node.parentNode.getBoundingClientRect();
                 else
-                    rect = getUsefulRect(g.range(node, start, end).getClientRects(), bias);
+                    rect = getUsefulRect(dom.range(node, start, end).getClientRects(), bias);
                 if (rect.left || rect.right || start == 0)
                     break;
                 end = start;
                 start = start - 1;
                 collapse = 'right';
             }
-            if (f.ie && f.ie_version < 11)
+            if (browser.ie && browser.ie_version < 11)
                 rect = maybeUpdateRectForZooming(cm.display.measure, rect);
         } else {
             if (start > 0)
@@ -239,7 +239,7 @@ define([
             else
                 rect = node.getBoundingClientRect();
         }
-        if (f.ie && f.ie_version < 9 && !start && (!rect || !rect.left && !rect.right)) {
+        if (browser.ie && browser.ie_version < 9 && !start && (!rect || !rect.left && !rect.right)) {
             let rSpan = node.parentNode.getClientRects()[0];
             if (rSpan)
                 rect = {
@@ -274,7 +274,7 @@ define([
         return result;
     }
     function maybeUpdateRectForZooming(measure, rect) {
-        if (!window.screen || screen.logicalXDPI == null || screen.logicalXDPI == screen.deviceXDPI || !i.hasBadZoomedRects(measure))
+        if (!window.screen || screen.logicalXDPI == null || screen.logicalXDPI == screen.deviceXDPI || !feature_detection.hasBadZoomedRects(measure))
             return rect;
         let scaleX = screen.logicalXDPI / screen.deviceXDPI;
         let scaleY = screen.logicalYDPI / screen.deviceYDPI;
@@ -296,7 +296,7 @@ define([
     }
     function clearLineMeasurementCache(cm) {
         cm.display.externalMeasure = null;
-        g.removeChildren(cm.display.lineMeasure);
+        dom.removeChildren(cm.display.lineMeasure);
         for (let i = 0; i < cm.display.view.length; i++)
             clearLineMeasurementCacheFor(cm.display.view[i]);
     }
@@ -308,12 +308,12 @@ define([
         cm.display.lineNumChars = null;
     }
     function pageScrollX() {
-        if (f.chrome && f.android)
+        if (browser.chrome && browser.android)
             return -(document.body.getBoundingClientRect().left - parseInt(getComputedStyle(document.body).marginLeft));
         return window.pageXOffset || (document.documentElement || document.body).scrollLeft;
     }
     function pageScrollY() {
-        if (f.chrome && f.android)
+        if (browser.chrome && browser.android)
             return -(document.body.getBoundingClientRect().top - parseInt(getComputedStyle(document.body).marginTop));
         return window.pageYOffset || (document.documentElement || document.body).scrollTop;
     }
@@ -322,7 +322,7 @@ define([
         if (lineObj.widgets)
             for (let i = 0; i < lineObj.widgets.length; ++i)
                 if (lineObj.widgets[i].above)
-                    height += l.widgetHeight(lineObj.widgets[i]);
+                    height += widgets.widgetHeight(lineObj.widgets[i]);
         return height;
     }
     function intoCoordSystem(cm, lineObj, rect, context, includeWidgets) {
@@ -335,7 +335,7 @@ define([
             return rect;
         if (!context)
             context = 'local';
-        let yOff = c.heightAtLine(lineObj);
+        let yOff = spans.heightAtLine(lineObj);
         if (context == 'local')
             yOff += paddingTop(cm.display);
         else
@@ -371,11 +371,11 @@ define([
     }
     function charCoords(cm, pos, context, lineObj, bias) {
         if (!lineObj)
-            lineObj = d.getLine(cm.doc, pos.line);
+            lineObj = utils_line.getLine(cm.doc, pos.line);
         return intoCoordSystem(cm, lineObj, measureChar(cm, lineObj, pos.ch, bias), context);
     }
     function cursorCoords(cm, pos, context, lineObj, preparedMeasure, varHeight) {
-        lineObj = lineObj || d.getLine(cm.doc, pos.line);
+        lineObj = lineObj || utils_line.getLine(cm.doc, pos.line);
         if (!preparedMeasure)
             preparedMeasure = prepareMeasureForLine(cm, lineObj);
         function get(ch, right) {
@@ -386,7 +386,7 @@ define([
                 m.right = m.left;
             return intoCoordSystem(cm, lineObj, m, context);
         }
-        let order = e.getOrder(lineObj, cm.doc.direction), ch = pos.ch, sticky = pos.sticky;
+        let order = bidi.getOrder(lineObj, cm.doc.direction), ch = pos.ch, sticky = pos.sticky;
         if (ch >= lineObj.text.length) {
             ch = lineObj.text.length;
             sticky = 'before';
@@ -400,8 +400,8 @@ define([
             let part = order[partPos], right = part.level == 1;
             return get(invert ? ch - 1 : ch, right != invert);
         }
-        let partPos = e.getBidiPartAt(order, ch, sticky);
-        let other = e.bidiOther;
+        let partPos = bidi.getBidiPartAt(order, ch, sticky);
+        let other = bidi.bidiOther;
         let val = getBidi(ch, partPos, sticky == 'before');
         if (other != null)
             val.other = getBidi(ch, other, sticky != 'before');
@@ -409,11 +409,11 @@ define([
     }
     function estimateCoords(cm, pos) {
         let left = 0;
-        pos = b.clipPos(cm.doc, pos);
+        pos = line_pos.clipPos(cm.doc, pos);
         if (!cm.options.lineWrapping)
             left = charWidth(cm.display) * pos.ch;
-        let lineObj = d.getLine(cm.doc, pos.line);
-        let top = c.heightAtLine(lineObj) + paddingTop(cm.display);
+        let lineObj = utils_line.getLine(cm.doc, pos.line);
+        let top = spans.heightAtLine(lineObj) + paddingTop(cm.display);
         return {
             left: left,
             right: left,
@@ -422,7 +422,7 @@ define([
         };
     }
     function PosWithInfo(line, ch, sticky, outside, xRel) {
-        let pos = b.Pos(line, ch, sticky);
+        let pos = line_pos.Pos(line, ch, sticky);
         pos.xRel = xRel;
         if (outside)
             pos.outside = true;
@@ -433,28 +433,28 @@ define([
         y += cm.display.viewOffset;
         if (y < 0)
             return PosWithInfo(doc.first, 0, null, true, -1);
-        let lineN = d.lineAtHeight(doc, y), last = doc.first + doc.size - 1;
+        let lineN = utils_line.lineAtHeight(doc, y), last = doc.first + doc.size - 1;
         if (lineN > last)
-            return PosWithInfo(doc.first + doc.size - 1, d.getLine(doc, last).text.length, null, true, 1);
+            return PosWithInfo(doc.first + doc.size - 1, utils_line.getLine(doc, last).text.length, null, true, 1);
         if (x < 0)
             x = 0;
-        let lineObj = d.getLine(doc, lineN);
+        let lineObj = utils_line.getLine(doc, lineN);
         for (;;) {
             let found = coordsCharInner(cm, lineObj, lineN, x, y);
-            let collapsed = c.collapsedSpanAround(lineObj, found.ch + (found.xRel > 0 ? 1 : 0));
+            let collapsed = spans.collapsedSpanAround(lineObj, found.ch + (found.xRel > 0 ? 1 : 0));
             if (!collapsed)
                 return found;
             let rangeEnd = collapsed.find(1);
             if (rangeEnd.line == lineN)
                 return rangeEnd;
-            lineObj = d.getLine(doc, lineN = rangeEnd.line);
+            lineObj = utils_line.getLine(doc, lineN = rangeEnd.line);
         }
     }
     function wrappedLineExtent(cm, lineObj, preparedMeasure, y) {
         y -= widgetTopHeight(lineObj);
         let end = lineObj.text.length;
-        let begin = j.findFirst(ch => measureCharPrepared(cm, preparedMeasure, ch - 1).bottom <= y, end, 0);
-        end = j.findFirst(ch => measureCharPrepared(cm, preparedMeasure, ch).top > y, begin, end);
+        let begin = misc.findFirst(ch => measureCharPrepared(cm, preparedMeasure, ch - 1).bottom <= y, end, 0);
+        end = misc.findFirst(ch => measureCharPrepared(cm, preparedMeasure, ch).top > y, begin, end);
         return {
             begin,
             end
@@ -470,11 +470,11 @@ define([
         return box.bottom <= y ? false : box.top > y ? true : (left ? box.left : box.right) > x;
     }
     function coordsCharInner(cm, lineObj, lineNo, x, y) {
-        y -= c.heightAtLine(lineObj);
+        y -= spans.heightAtLine(lineObj);
         let preparedMeasure = prepareMeasureForLine(cm, lineObj);
         let widgetHeight = widgetTopHeight(lineObj);
         let begin = 0, end = lineObj.text.length, ltr = true;
-        let order = e.getOrder(lineObj, cm.doc.direction);
+        let order = bidi.getOrder(lineObj, cm.doc.direction);
         if (order) {
             let part = (cm.options.lineWrapping ? coordsBidiPartWrapped : coordsBidiPart)(cm, lineObj, lineNo, preparedMeasure, order, x, y);
             ltr = part.level != 1;
@@ -482,10 +482,10 @@ define([
             end = ltr ? part.to : part.from - 1;
         }
         let chAround = null, boxAround = null;
-        let ch = j.findFirst(ch => {
+        let ch = misc.findFirst(ch => {
             let box = measureCharPrepared(cm, preparedMeasure, ch);
-            box.top += l.widgetHeight;
-            box.bottom += l.widgetHeight;
+            box.top += widgetHeight;
+            box.bottom += widgetHeight;
             if (!boxIsAfter(box, x, y, false))
                 return false;
             if (box.top <= y && box.left <= x) {
@@ -503,23 +503,23 @@ define([
         } else {
             if (!ltr && (ch == end || ch == begin))
                 ch++;
-            sticky = ch == 0 ? 'after' : ch == lineObj.text.length ? 'before' : measureCharPrepared(cm, preparedMeasure, ch - (ltr ? 1 : 0)).bottom + l.widgetHeight <= y == ltr ? 'after' : 'before';
-            let coords = cursorCoords(cm, b.Pos(lineNo, ch, sticky), 'line', lineObj, preparedMeasure);
+            sticky = ch == 0 ? 'after' : ch == lineObj.text.length ? 'before' : measureCharPrepared(cm, preparedMeasure, ch - (ltr ? 1 : 0)).bottom + widgets.widgetHeight <= y == ltr ? 'after' : 'before';
+            let coords = cursorCoords(cm, line_pos.Pos(lineNo, ch, sticky), 'line', lineObj, preparedMeasure);
             baseX = coords.left;
             outside = y < coords.top || y >= coords.bottom;
         }
-        ch = j.skipExtendingChars(lineObj.text, ch, 1);
+        ch = misc.skipExtendingChars(lineObj.text, ch, 1);
         return PosWithInfo(lineNo, ch, sticky, outside, x - baseX);
     }
     function coordsBidiPart(cm, lineObj, lineNo, preparedMeasure, order, x, y) {
-        let index = j.findFirst(i => {
+        let index = misc.findFirst(i => {
             let part = order[i], ltr = part.level != 1;
-            return boxIsAfter(cursorCoords(cm, b.Pos(lineNo, ltr ? part.to : part.from, ltr ? 'before' : 'after'), 'line', lineObj, preparedMeasure), x, y, true);
+            return boxIsAfter(cursorCoords(cm, line_pos.Pos(lineNo, ltr ? part.to : part.from, ltr ? 'before' : 'after'), 'line', lineObj, preparedMeasure), x, y, true);
         }, 0, order.length - 1);
         let part = order[index];
         if (index > 0) {
             let ltr = part.level != 1;
-            let start = cursorCoords(cm, b.Pos(lineNo, ltr ? part.from : part.to, ltr ? 'after' : 'before'), 'line', lineObj, preparedMeasure);
+            let start = cursorCoords(cm, line_pos.Pos(lineNo, ltr ? part.from : part.to, ltr ? 'after' : 'before'), 'line', lineObj, preparedMeasure);
             if (boxIsAfter(start, x, y, true) && start.top > y)
                 part = order[index - 1];
         }
@@ -563,44 +563,44 @@ define([
         if (display.cachedTextHeight != null)
             return display.cachedTextHeight;
         if (measureText == null) {
-            measureText = g.elt('pre');
+            measureText = dom.elt('pre');
             for (let i = 0; i < 49; ++i) {
                 measureText.appendChild(document.createTextNode('x'));
-                measureText.appendChild(g.elt('br'));
+                measureText.appendChild(dom.elt('br'));
             }
             measureText.appendChild(document.createTextNode('x'));
         }
-        g.removeChildrenAndAdd(display.measure, measureText);
+        dom.removeChildrenAndAdd(display.measure, measureText);
         let height = measureText.offsetHeight / 50;
         if (height > 3)
             display.cachedTextHeight = height;
-        g.removeChildren(display.measure);
+        dom.removeChildren(display.measure);
         return height || 1;
     }
     function charWidth(display) {
         if (display.cachedCharWidth != null)
             return display.cachedCharWidth;
-        let anchor = g.elt('span', 'xxxxxxxxxx');
-        let pre = g.elt('pre', [anchor]);
-        g.removeChildrenAndAdd(display.measure, pre);
+        let anchor = dom.elt('span', 'xxxxxxxxxx');
+        let pre = dom.elt('pre', [anchor]);
+        dom.removeChildrenAndAdd(display.measure, pre);
         let rect = anchor.getBoundingClientRect(), width = (rect.right - rect.left) / 10;
         if (width > 2)
             display.cachedCharWidth = width;
         return width || 10;
     }
     function getDimensions(cm) {
-        let d = cm.display, left = {}, width = {};
-        let gutterLeft = d.gutters.clientLeft;
-        for (let n = d.gutters.firstChild, i = 0; n; n = n.nextSibling, ++i) {
+        let utils_line = cm.display, left = {}, width = {};
+        let gutterLeft = utils_line.gutters.clientLeft;
+        for (let n = utils_line.gutters.firstChild, i = 0; n; n = n.nextSibling, ++i) {
             left[cm.options.gutters[i]] = n.offsetLeft + n.clientLeft + gutterLeft;
             width[cm.options.gutters[i]] = n.clientWidth;
         }
         return {
-            fixedPos: compensateForHScroll(d),
-            gutterTotalWidth: d.gutters.offsetWidth,
+            fixedPos: compensateForHScroll(utils_line),
+            gutterTotalWidth: utils_line.gutters.offsetWidth,
             gutterLeft: left,
             gutterWidth: width,
-            wrapperWidth: d.wrapper.clientWidth
+            wrapperWidth: utils_line.wrapper.clientWidth
         };
     }
     function compensateForHScroll(display) {
@@ -610,7 +610,7 @@ define([
         let th = textHeight(cm.display), wrapping = cm.options.lineWrapping;
         let perLine = wrapping && Math.max(5, cm.display.scroller.clientWidth / charWidth(cm.display) - 3);
         return line => {
-            if (c.lineIsHidden(cm.doc, line))
+            if (spans.lineIsHidden(cm.doc, line))
                 return 0;
             let widgetsHeight = 0;
             if (line.widgets)
@@ -629,12 +629,12 @@ define([
         doc.iter(line => {
             let estHeight = est(line);
             if (estHeight != line.height)
-                d.updateLineHeight(line, estHeight);
+                utils_line.updateLineHeight(line, estHeight);
         });
     }
     function posFromMouse(cm, e, liberal, forRect) {
         let display = cm.display;
-        if (!liberal && h.e_target(e).getAttribute('cm-not-content') == 'true')
+        if (!liberal && events.e_target(e).getAttribute('cm-not-content') == 'true')
             return null;
         let x, y, space = display.lineSpace.getBoundingClientRect();
         try {
@@ -644,9 +644,9 @@ define([
             return null;
         }
         let coords = coordsChar(cm, x, y), line;
-        if (forRect && coords.xRel == 1 && (line = d.getLine(cm.doc, coords.line).text).length == coords.ch) {
-            let colDiff = j.countColumn(line, line.length, cm.options.tabSize) - line.length;
-            coords = b.Pos(coords.line, Math.max(0, Math.round((x - paddingH(cm.display).left) / charWidth(cm.display)) - colDiff));
+        if (forRect && coords.xRel == 1 && (line = utils_line.getLine(cm.doc, coords.line).text).length == coords.ch) {
+            let colDiff = misc.countColumn(line, line.length, cm.options.tabSize) - line.length;
+            coords = line_pos.Pos(coords.line, Math.max(0, Math.round((x - paddingH(cm.display).left) / charWidth(cm.display)) - colDiff));
         }
         return coords;
     }

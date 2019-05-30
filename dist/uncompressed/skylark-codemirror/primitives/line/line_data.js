@@ -8,12 +8,12 @@ define([
     './highlight',
     './spans',
     './utils_line'
-], function (a, b, c, d, e, f, g, h, m_utils_line) {
+], function (a, b, c, d, e, f, g, spans, m_utils_line) {
     'use strict';
     class Line {
         constructor(text, markedSpans, estimateHeight) {
             this.text = text;
-            h.attachMarkedSpans(this, markedSpans);
+            spans.attachMarkedSpans(this, markedSpans);
             this.height = estimateHeight ? estimateHeight(this) : 1;
         }
         lineNo() {
@@ -29,15 +29,15 @@ define([
             line.styles = null;
         if (line.order != null)
             line.order = null;
-        h.detachMarkedSpans(line);
-        h.attachMarkedSpans(line, markedSpans);
+        spans.detachMarkedSpans(line);
+        spans.attachMarkedSpans(line, markedSpans);
         let estHeight = estimateHeight ? estimateHeight(line) : 1;
         if (estHeight != line.height)
             m_utils_line.updateLineHeight(line, estHeight);
     }
     function cleanUpLine(line) {
         line.parent = null;
-        h.detachMarkedSpans(line);
+        spans.detachMarkedSpans(line);
     }
     let styleToClassCache = {}, styleToClassCacheWithMode = {};
     function interpretTokenStyle(style, options) {
@@ -262,7 +262,7 @@ define([
                             for (let attr in m.attributes)
                                 (attributes || (attributes = {}))[attr] = m.attributes[attr];
                         }
-                        if (m.collapsed && (!collapsed || h.compareCollapsedMarkers(collapsed.marker, m) < 0))
+                        if (m.collapsed && (!collapsed || spans.compareCollapsedMarkers(collapsed.marker, m) < 0))
                             collapsed = sp;
                     } else if (sp.from > pos && nextChange > sp.from) {
                         nextChange = sp.from;
@@ -308,10 +308,10 @@ define([
     }
     function LineView(doc, line, lineN) {
         this.line = line;
-        this.rest = h.visualLineContinued(line);
+        this.rest = spans.visualLineContinued(line);
         this.size = this.rest ? m_utils_line.lineNo(f.lst(this.rest)) - lineN + 1 : 1;
         this.node = this.text = null;
-        this.hidden = h.lineIsHidden(doc, line);
+        this.hidden = spans.lineIsHidden(doc, line);
     }
     function buildViewArray(cm, from, to) {
         let array = [], nextPos;
