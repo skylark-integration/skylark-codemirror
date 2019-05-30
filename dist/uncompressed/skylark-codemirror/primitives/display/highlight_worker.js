@@ -4,24 +4,24 @@ define([
     '../util/misc',
     './operations',
     './view_tracking'
-], function (a, b, c, d, e) {
+], function (highlight, models, misc, operations, view_tracking) {
     'use strict';
     function startWorker(cm, time) {
         if (cm.doc.highlightFrontier < cm.display.viewTo)
-            cm.state.highlight.set(time, c.bind(highlightWorker, cm));
+            cm.state.highlight.set(time, misc.bind(highlightWorker, cm));
     }
     function highlightWorker(cm) {
         let doc = cm.doc;
         if (doc.highlightFrontier >= cm.display.viewTo)
             return;
         let end = +new Date() + cm.options.workTime;
-        let context = a.getContextBefore(cm, doc.highlightFrontier);
+        let context = highlight.getContextBefore(cm, doc.highlightFrontier);
         let changedLines = [];
         doc.iter(context.line, Math.min(doc.first + doc.size, cm.display.viewTo + 500), line => {
             if (context.line >= cm.display.viewFrom) {
                 let oldStyles = line.styles;
-                let resetState = line.text.length > cm.options.maxHighlightLength ? b.copyState(doc.mode, context.state) : null;
-                let highlighted = a.highlightLine(cm, line, context, true);
+                let resetState = line.text.length > cm.options.maxHighlightLength ? models.copyState(doc.mode, context.state) : null;
+                let highlighted = highlight.highlightLine(cm, line, context, true);
                 if (resetState)
                     context.state = resetState;
                 line.styles = highlighted.styles;
@@ -39,7 +39,7 @@ define([
                 context.nextLine();
             } else {
                 if (line.text.length <= cm.options.maxHighlightLength)
-                    a.processLine(cm, line.text, context);
+                    highlight.processLine(cm, line.text, context);
                 line.stateAfter = context.line % 5 == 0 ? context.save() : null;
                 context.nextLine();
             }
@@ -51,9 +51,9 @@ define([
         doc.highlightFrontier = context.line;
         doc.modeFrontier = Math.max(doc.modeFrontier, context.line);
         if (changedLines.length)
-            d.runInOp(cm, () => {
+            operations.runInOp(cm, () => {
                 for (let i = 0; i < changedLines.length; i++)
-                    e.regLineChange(cm, changedLines[i], 'text');
+                    view_tracking.regLineChange(cm, changedLines[i], 'text');
             });
     }
     return { startWorker: startWorker };

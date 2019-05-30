@@ -4,7 +4,7 @@ define([
     '../util/StringStream',
     './utils_line',
     './pos'
-], function (a, b, StringStream, c, d) {
+], function (misc, modes, StringStream, utils_line, line_pos) {
     'use strict';
     class SavedContext {
         constructor(state, lookAhead) {
@@ -45,12 +45,12 @@ define([
         }
         static fromSaved(doc, saved, line) {
             if (saved instanceof SavedContext)
-                return new Context(doc, b.copyState(doc.mode, saved.state), line, saved.lookAhead);
+                return new Context(doc, modes.copyState(doc.mode, saved.state), line, saved.lookAhead);
             else
-                return new Context(doc, b.copyState(doc.mode, saved), line);
+                return new Context(doc, modes.copyState(doc.mode, saved), line);
         }
         save(copy) {
-            let state = copy !== false ? b.copyState(this.doc.mode, this.state) : this.state;
+            let state = copy !== false ? modes.copyState(this.doc.mode, this.state) : this.state;
             return this.maxLookAhead > 0 ? new SavedContext(state, this.maxLookAhead) : state;
         }
     }
@@ -94,8 +94,8 @@ define([
     }
     function getLineStyles(cm, line, updateFrontier) {
         if (!line.styles || line.styles[0] != cm.state.modeGen) {
-            let context = getContextBefore(cm, c.lineNo(line));
-            let resetState = line.text.length > cm.options.maxHighlightLength && b.copyState(cm.doc.mode, context.state);
+            let context = getContextBefore(cm, utils_line.lineNo(line));
+            let resetState = line.text.length > cm.options.maxHighlightLength && modes.copyState(cm.doc.mode, context.state);
             let result = highlightLine(cm, line, context);
             if (resetState)
                 context.state = resetState;
@@ -115,8 +115,8 @@ define([
         if (!doc.mode.startState)
             return new Context(doc, true, n);
         let start = findStartLine(cm, n, precise);
-        let saved = start > doc.first && c.getLine(doc, start - 1).stateAfter;
-        let context = saved ? Context.fromSaved(doc, saved, start) : new Context(doc, b.startState(doc.mode), start);
+        let saved = start > doc.first && utils_line.getLine(doc, start - 1).stateAfter;
+        let context = saved ? Context.fromSaved(doc, saved, start) : new Context(doc, modes.startState(doc.mode), start);
         doc.iter(start, n, line => {
             processLine(cm, line.text, context);
             let pos = context.line;
@@ -143,14 +143,14 @@ define([
             return mode.blankLine(state);
         if (!mode.innerMode)
             return;
-        let inner = b.innerMode(mode, state);
+        let inner = modes.innerMode(mode, state);
         if (inner.mode.blankLine)
             return inner.mode.blankLine(inner.state);
     }
     function readToken(mode, stream, state, inner) {
         for (let i = 0; i < 10; i++) {
             if (inner)
-                inner[0] = b.innerMode(mode, state).mode;
+                inner[0] = modes.innerMode(mode, state).mode;
             let style = mode.token(stream, state);
             if (stream.pos > stream.start)
                 return style;
@@ -168,8 +168,8 @@ define([
     }
     function takeToken(cm, pos, precise, asArray) {
         let doc = cm.doc, mode = doc.mode, style;
-        pos = d.clipPos(doc, pos);
-        let line = c.getLine(doc, pos.line), context = getContextBefore(cm, pos.line, precise);
+        pos = line_pos.clipPos(doc, pos);
+        let line = utils_line.getLine(doc, pos.line), context = getContextBefore(cm, pos.line, precise);
         let stream = new StringStream(line.text, cm.options.tabSize, context), tokens;
         if (asArray)
             tokens = [];
@@ -177,7 +177,7 @@ define([
             stream.start = stream.pos;
             style = readToken(mode, stream, context.state);
             if (asArray)
-                tokens.push(new Token(stream, style, b.copyState(doc.mode, context.state)));
+                tokens.push(new Token(stream, style, modes.copyState(doc.mode, context.state)));
         }
         return asArray ? tokens : new Token(stream, style, context.state);
     }
@@ -241,10 +241,10 @@ define([
         for (let search = n; search > lim; --search) {
             if (search <= doc.first)
                 return doc.first;
-            let line = c.getLine(doc, search - 1), after = line.stateAfter;
+            let line = utils_line.getLine(doc, search - 1), after = line.stateAfter;
             if (after && (!precise || search + (after instanceof SavedContext ? after.lookAhead : 0) <= doc.modeFrontier))
                 return search;
-            let indented = a.countColumn(line.text, null, cm.options.tabSize);
+            let indented = misc.countColumn(line.text, null, cm.options.tabSize);
             if (minline == null || minindent > indented) {
                 minline = search - 1;
                 minindent = indented;
@@ -258,7 +258,7 @@ define([
             return;
         let start = doc.first;
         for (let line = n - 1; line > start; line--) {
-            let saved = c.getLine(doc, line).stateAfter;
+            let saved = utils_line.getLine(doc, line).stateAfter;
             if (saved && (!(saved instanceof SavedContext) || line + saved.lookAhead < n)) {
                 start = line + 1;
                 break;

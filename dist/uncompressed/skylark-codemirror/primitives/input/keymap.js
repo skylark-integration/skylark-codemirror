@@ -2,7 +2,7 @@ define([
     '../util/browser',
     '../util/misc',
     './keynames'
-], function (a, b, c) {
+], function (browser, misc, keynames) {
     'use strict';
     let keyMap = {};
     keyMap.basic = {
@@ -107,7 +107,7 @@ define([
             'emacsy'
         ]
     };
-    keyMap['default'] = a.mac ? keyMap.macDefault : keyMap.pcDefault;
+    keyMap['default'] = browser.mac ? keyMap.macDefault : keyMap.pcDefault;
     function normalizeKeyName(name) {
         let parts = name.split(/-(?!$)/);
         name = parts[parts.length - 1];
@@ -146,7 +146,7 @@ define([
                     delete keymap[keyname];
                     continue;
                 }
-                let keys = b.map(keyname.split(' '), normalizeKeyName);
+                let keys = misc.map(keyname.split(' '), normalizeKeyName);
                 for (let i = 0; i < keys.length; i++) {
                     let val, name;
                     if (i == keys.length - 1) {
@@ -188,25 +188,25 @@ define([
         }
     }
     function isModifierKey(value) {
-        let name = typeof value == 'string' ? value : c.keyNames[value.keyCode];
+        let name = typeof value == 'string' ? value : keynames.keyNames[value.keyCode];
         return name == 'Ctrl' || name == 'Alt' || name == 'Shift' || name == 'Mod';
     }
     function addModifierNames(name, event, noShift) {
         let base = name;
         if (event.altKey && base != 'Alt')
             name = 'Alt-' + name;
-        if ((a.flipCtrlCmd ? event.metaKey : event.ctrlKey) && base != 'Ctrl')
+        if ((browser.flipCtrlCmd ? event.metaKey : event.ctrlKey) && base != 'Ctrl')
             name = 'Ctrl-' + name;
-        if ((a.flipCtrlCmd ? event.ctrlKey : event.metaKey) && base != 'Cmd')
+        if ((browser.flipCtrlCmd ? event.ctrlKey : event.metaKey) && base != 'Cmd')
             name = 'Cmd-' + name;
         if (!noShift && event.shiftKey && base != 'Shift')
             name = 'Shift-' + name;
         return name;
     }
     function keyName(event, noShift) {
-        if (a.presto && event.keyCode == 34 && event['char'])
+        if (browser.presto && event.keyCode == 34 && event['char'])
             return false;
-        let name = c.keyNames[event.keyCode];
+        let name = keynames.keyNames[event.keyCode];
         if (name == null || event.altGraphKey)
             return false;
         if (event.keyCode == 3 && event.code)

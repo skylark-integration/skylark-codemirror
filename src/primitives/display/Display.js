@@ -2,50 +2,50 @@ define([
     '../util/browser',
     '../util/dom',
     '../util/misc'
-], function (a, b, c) {
+], function (browser, dom, misc) {
     'use strict';
     function Display(place, doc, input) {
         let d = this;
         this.input = input;
-        d.scrollbarFiller = b.elt('div', null, 'CodeMirror-scrollbar-filler');
+        d.scrollbarFiller = dom.elt('div', null, 'CodeMirror-scrollbar-filler');
         d.scrollbarFiller.setAttribute('cm-not-content', 'true');
-        d.gutterFiller = b.elt('div', null, 'CodeMirror-gutter-filler');
+        d.gutterFiller = dom.elt('div', null, 'CodeMirror-gutter-filler');
         d.gutterFiller.setAttribute('cm-not-content', 'true');
-        d.lineDiv = b.eltP('div', null, 'CodeMirror-code');
-        d.selectionDiv = b.elt('div', null, null, 'position: relative; z-index: 1');
-        d.cursorDiv = b.elt('div', null, 'CodeMirror-cursors');
-        d.measure = b.elt('div', null, 'CodeMirror-measure');
-        d.lineMeasure = b.elt('div', null, 'CodeMirror-measure');
-        d.lineSpace = b.eltP('div', [
+        d.lineDiv = dom.eltP('div', null, 'CodeMirror-code');
+        d.selectionDiv = dom.elt('div', null, null, 'position: relative; z-index: 1');
+        d.cursorDiv = dom.elt('div', null, 'CodeMirror-cursors');
+        d.measure = dom.elt('div', null, 'CodeMirror-measure');
+        d.lineMeasure = dom.elt('div', null, 'CodeMirror-measure');
+        d.lineSpace = dom.eltP('div', [
             d.measure,
             d.lineMeasure,
             d.selectionDiv,
             d.cursorDiv,
             d.lineDiv
         ], null, 'position: relative; outline: none');
-        let lines = b.eltP('div', [d.lineSpace], 'CodeMirror-lines');
-        d.mover = b.elt('div', [lines], null, 'position: relative');
-        d.sizer = b.elt('div', [d.mover], 'CodeMirror-sizer');
+        let lines = dom.eltP('div', [d.lineSpace], 'CodeMirror-lines');
+        d.mover = dom.elt('div', [lines], null, 'position: relative');
+        d.sizer = dom.elt('div', [d.mover], 'CodeMirror-sizer');
         d.sizerWidth = null;
-        d.heightForcer = b.elt('div', null, null, 'position: absolute; height: ' + c.scrollerGap + 'px; width: 1px;');
-        d.gutters = b.elt('div', null, 'CodeMirror-gutters');
+        d.heightForcer = dom.elt('div', null, null, 'position: absolute; height: ' + misc.scrollerGap + 'px; width: 1px;');
+        d.gutters = dom.elt('div', null, 'CodeMirror-gutters');
         d.lineGutter = null;
-        d.scroller = b.elt('div', [
+        d.scroller = dom.elt('div', [
             d.sizer,
             d.heightForcer,
             d.gutters
         ], 'CodeMirror-scroll');
         d.scroller.setAttribute('tabIndex', '-1');
-        d.wrapper = b.elt('div', [
+        d.wrapper = dom.elt('div', [
             d.scrollbarFiller,
             d.gutterFiller,
             d.scroller
         ], 'CodeMirror');
-        if (a.ie && a.ie_version < 8) {
+        if (browser.ie && browser.ie_version < 8) {
             d.gutters.style.zIndex = -1;
             d.scroller.style.paddingRight = 0;
         }
-        if (!a.webkit && !(a.gecko && a.mobile))
+        if (!browser.webkit && !(browser.gecko && browser.mobile))
             d.scroller.draggable = true;
         if (place) {
             if (place.appendChild)

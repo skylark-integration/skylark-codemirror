@@ -3,7 +3,7 @@ define([
     '../util/browser',
     '../util/dom',
     '../util/event'
-], function (a, b, c, d) {
+], function (selection, browser, dom, event) {
     'use strict';
     function ensureFocus(cm) {
         if (!cm.state.focused) {
@@ -26,25 +26,25 @@ define([
         if (cm.options.readOnly == 'nocursor')
             return;
         if (!cm.state.focused) {
-            d.signal(cm, 'focus', cm, e);
+            event.signal(cm, 'focus', cm, e);
             cm.state.focused = true;
-            c.addClass(cm.display.wrapper, 'CodeMirror-focused');
+            dom.addClass(cm.display.wrapper, 'CodeMirror-focused');
             if (!cm.curOp && cm.display.selForContextMenu != cm.doc.sel) {
                 cm.display.input.reset();
-                if (b.webkit)
+                if (browser.webkit)
                     setTimeout(() => cm.display.input.reset(true), 20);
             }
             cm.display.input.receivedFocus();
         }
-        a.restartBlink(cm);
+        selection.restartBlink(cm);
     }
     function onBlur(cm, e) {
         if (cm.state.delayingBlurEvent)
             return;
         if (cm.state.focused) {
-            d.signal(cm, 'blur', cm, e);
+            event.signal(cm, 'blur', cm, e);
             cm.state.focused = false;
-            c.rmClass(cm.display.wrapper, 'CodeMirror-focused');
+            dom.rmClass(cm.display.wrapper, 'CodeMirror-focused');
         }
         clearInterval(cm.display.blinker);
         setTimeout(() => {

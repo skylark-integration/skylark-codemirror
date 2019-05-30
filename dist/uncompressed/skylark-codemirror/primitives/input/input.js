@@ -10,7 +10,7 @@ define([
     '../util/operation_group',
     '../util/feature_detection',
     './indent'
-], function (a, b, c, d, e, f, g, h, i, j, k) {
+], function (a, b, c, d, e, f, g, h, operation_group, j, k) {
     'use strict';
     let lastCopied = null;
     function setLastCopied(newLastCopied) {
@@ -54,7 +54,7 @@ define([
                 origin: origin || (paste ? 'paste' : cm.state.cutIncoming > recent ? 'cut' : '+input')
             };
             e.makeChange(cm.doc, changeEvent);
-            i.signalLater(cm, 'inputRead', cm, changeEvent);
+            operation_group.signalLater(cm, 'inputRead', cm, changeEvent);
         }
         if (inserted && !paste)
             triggerElectric(cm, inserted);
@@ -94,7 +94,7 @@ define([
                     indented = k.indentLine(cm, range.head.line, 'smart');
             }
             if (indented)
-                i.signalLater(cm, 'electricInput', cm, range.head.line);
+                operation_group.signalLater(cm, 'electricInput', cm, range.head.line);
         }
     }
     function copyableRanges(cm) {

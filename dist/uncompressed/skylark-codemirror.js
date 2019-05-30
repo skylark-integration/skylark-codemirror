@@ -443,50 +443,50 @@ define('skylark-codemirror/primitives/display/Display',[
     '../util/browser',
     '../util/dom',
     '../util/misc'
-], function (a, b, c) {
+], function (browser, dom, misc) {
     'use strict';
     function Display(place, doc, input) {
         let d = this;
         this.input = input;
-        d.scrollbarFiller = b.elt('div', null, 'CodeMirror-scrollbar-filler');
+        d.scrollbarFiller = dom.elt('div', null, 'CodeMirror-scrollbar-filler');
         d.scrollbarFiller.setAttribute('cm-not-content', 'true');
-        d.gutterFiller = b.elt('div', null, 'CodeMirror-gutter-filler');
+        d.gutterFiller = dom.elt('div', null, 'CodeMirror-gutter-filler');
         d.gutterFiller.setAttribute('cm-not-content', 'true');
-        d.lineDiv = b.eltP('div', null, 'CodeMirror-code');
-        d.selectionDiv = b.elt('div', null, null, 'position: relative; z-index: 1');
-        d.cursorDiv = b.elt('div', null, 'CodeMirror-cursors');
-        d.measure = b.elt('div', null, 'CodeMirror-measure');
-        d.lineMeasure = b.elt('div', null, 'CodeMirror-measure');
-        d.lineSpace = b.eltP('div', [
+        d.lineDiv = dom.eltP('div', null, 'CodeMirror-code');
+        d.selectionDiv = dom.elt('div', null, null, 'position: relative; z-index: 1');
+        d.cursorDiv = dom.elt('div', null, 'CodeMirror-cursors');
+        d.measure = dom.elt('div', null, 'CodeMirror-measure');
+        d.lineMeasure = dom.elt('div', null, 'CodeMirror-measure');
+        d.lineSpace = dom.eltP('div', [
             d.measure,
             d.lineMeasure,
             d.selectionDiv,
             d.cursorDiv,
             d.lineDiv
         ], null, 'position: relative; outline: none');
-        let lines = b.eltP('div', [d.lineSpace], 'CodeMirror-lines');
-        d.mover = b.elt('div', [lines], null, 'position: relative');
-        d.sizer = b.elt('div', [d.mover], 'CodeMirror-sizer');
+        let lines = dom.eltP('div', [d.lineSpace], 'CodeMirror-lines');
+        d.mover = dom.elt('div', [lines], null, 'position: relative');
+        d.sizer = dom.elt('div', [d.mover], 'CodeMirror-sizer');
         d.sizerWidth = null;
-        d.heightForcer = b.elt('div', null, null, 'position: absolute; height: ' + c.scrollerGap + 'px; width: 1px;');
-        d.gutters = b.elt('div', null, 'CodeMirror-gutters');
+        d.heightForcer = dom.elt('div', null, null, 'position: absolute; height: ' + misc.scrollerGap + 'px; width: 1px;');
+        d.gutters = dom.elt('div', null, 'CodeMirror-gutters');
         d.lineGutter = null;
-        d.scroller = b.elt('div', [
+        d.scroller = dom.elt('div', [
             d.sizer,
             d.heightForcer,
             d.gutters
         ], 'CodeMirror-scroll');
         d.scroller.setAttribute('tabIndex', '-1');
-        d.wrapper = b.elt('div', [
+        d.wrapper = dom.elt('div', [
             d.scrollbarFiller,
             d.gutterFiller,
             d.scroller
         ], 'CodeMirror');
-        if (a.ie && a.ie_version < 8) {
+        if (browser.ie && browser.ie_version < 8) {
             d.gutters.style.zIndex = -1;
             d.scroller.style.paddingRight = 0;
         }
-        if (!a.webkit && !(a.gecko && a.mobile))
+        if (!browser.webkit && !(browser.gecko && browser.mobile))
             d.scroller.draggable = true;
         if (place) {
             if (place.appendChild)
@@ -617,7 +617,7 @@ define('skylark-codemirror/primitives/line/utils_line',['../util/misc'], functio
         lineNumberFor: lineNumberFor
     };
 });
-define('skylark-codemirror/primitives/line/pos',['./utils_line'], function (a) {
+define('skylark-codemirror/primitives/line/pos',['./utils_line'], function (utils_line) {
     'use strict';
     function Pos(line, ch, sticky = null) {
         if (!(this instanceof Pos))
@@ -649,8 +649,8 @@ define('skylark-codemirror/primitives/line/pos',['./utils_line'], function (a) {
             return Pos(doc.first, 0);
         let last = doc.first + doc.size - 1;
         if (pos.line > last)
-            return Pos(last, a.getLine(doc, last).text.length);
-        return clipToLen(pos, a.getLine(doc, pos.line).text.length);
+            return Pos(last, utils_line.getLine(doc, last).text.length);
+        return clipToLen(pos, utils_line.getLine(doc, pos.line).text.length);
     }
     function clipToLen(pos, linelen) {
         let ch = pos.ch;
@@ -700,7 +700,7 @@ define('skylark-codemirror/primitives/line/spans',[
     './pos',
     './saw_special_spans',
     './utils_line'
-], function (a, b, c, d) {
+], function (misc, pos, saw_special_spans, utils_line) {
     'use strict';
     function MarkedSpan(marker, from, to) {
         this.marker = marker;
@@ -755,14 +755,14 @@ define('skylark-codemirror/primitives/line/spans',[
     function stretchSpansOverChange(doc, change) {
         if (change.full)
             return null;
-        let oldFirst = d.isLine(doc, change.from.line) && d.getLine(doc, change.from.line).markedSpans;
-        let oldLast = d.isLine(doc, change.to.line) && d.getLine(doc, change.to.line).markedSpans;
+        let oldFirst = utils_line.isLine(doc, change.from.line) && utils_line.getLine(doc, change.from.line).markedSpans;
+        let oldLast = utils_line.isLine(doc, change.to.line) && utils_line.getLine(doc, change.to.line).markedSpans;
         if (!oldFirst && !oldLast)
             return null;
-        let startCh = change.from.ch, endCh = change.to.ch, isInsert = b.cmp(change.from, change.to) == 0;
+        let startCh = change.from.ch, endCh = change.to.ch, isInsert = pos.cmp(change.from, change.to) == 0;
         let first = markedSpansBefore(oldFirst, startCh, isInsert);
         let last = markedSpansAfter(oldLast, endCh, isInsert);
-        let sameLine = change.text.length == 1, offset = a.lst(change.text).length + (sameLine ? startCh : 0);
+        let sameLine = change.text.length == 1, offset = misc.lst(change.text).length + (sameLine ? startCh : 0);
         if (first) {
             for (let i = 0; i < first.length; ++i) {
                 let span = first[i];
@@ -827,7 +827,7 @@ define('skylark-codemirror/primitives/line/spans',[
             if (line.markedSpans)
                 for (let i = 0; i < line.markedSpans.length; ++i) {
                     let mark = line.markedSpans[i].marker;
-                    if (mark.readOnly && (!markers || a.indexOf(markers, mark) == -1))
+                    if (mark.readOnly && (!markers || misc.indexOf(markers, mark) == -1))
                         (markers || (markers = [])).push(mark);
                 }
         });
@@ -841,12 +841,12 @@ define('skylark-codemirror/primitives/line/spans',[
             let mk = markers[i], m = mk.find(0);
             for (let j = 0; j < parts.length; ++j) {
                 let p = parts[j];
-                if (b.cmp(p.to, m.from) < 0 || b.cmp(p.from, m.to) > 0)
+                if (pos.cmp(p.to, m.from) < 0 || pos.cmp(p.from, m.to) > 0)
                     continue;
                 let newParts = [
                         j,
                         1
-                    ], dfrom = b.cmp(p.from, m.from), dto = b.cmp(p.to, m.to);
+                    ], dfrom = pos.cmp(p.from, m.from), dto = pos.cmp(p.to, m.to);
                 if (dfrom < 0 || !mk.inclusiveLeft && !dfrom)
                     newParts.push({
                         from: p.from,
@@ -889,16 +889,16 @@ define('skylark-codemirror/primitives/line/spans',[
         if (lenDiff != 0)
             return lenDiff;
         let aPos = a.find(), bPos = b.find();
-        let fromCmp = b.cmp(aPos.from, bPos.from) || extraLeft(a) - extraLeft(b);
+        let fromCmp = pos.cmp(aPos.from, bPos.from) || extraLeft(a) - extraLeft(b);
         if (fromCmp)
             return -fromCmp;
-        let toCmp = b.cmp(aPos.to, bPos.to) || extraRight(a) - extraRight(b);
+        let toCmp = pos.cmp(aPos.to, bPos.to) || extraRight(a) - extraRight(b);
         if (toCmp)
             return toCmp;
         return b.id - a.id;
     }
     function collapsedSpanAtSide(line, start) {
-        let sps = c.sawCollapsedSpans && line.markedSpans, found;
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans, found;
         if (sps)
             for (let sp, i = 0; i < sps.length; ++i) {
                 sp = sps[i];
@@ -914,7 +914,7 @@ define('skylark-codemirror/primitives/line/spans',[
         return collapsedSpanAtSide(line, false);
     }
     function collapsedSpanAround(line, ch) {
-        let sps = c.sawCollapsedSpans && line.markedSpans, found;
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans, found;
         if (sps)
             for (let i = 0; i < sps.length; ++i) {
                 let sp = sps[i];
@@ -924,19 +924,19 @@ define('skylark-codemirror/primitives/line/spans',[
         return found;
     }
     function conflictingCollapsedRange(doc, lineNo, from, to, marker) {
-        let line = d.getLine(doc, d.lineNo);
-        let sps = c.sawCollapsedSpans && line.markedSpans;
+        let line = utils_line.getLine(doc, utils_line.lineNo);
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans;
         if (sps)
             for (let i = 0; i < sps.length; ++i) {
                 let sp = sps[i];
                 if (!sp.marker.collapsed)
                     continue;
                 let found = sp.marker.find(0);
-                let fromCmp = b.cmp(found.from, from) || extraLeft(sp.marker) - extraLeft(marker);
-                let toCmp = b.cmp(found.to, to) || extraRight(sp.marker) - extraRight(marker);
+                let fromCmp = pos.cmp(found.from, from) || extraLeft(sp.marker) - extraLeft(marker);
+                let toCmp = pos.cmp(found.to, to) || extraRight(sp.marker) - extraRight(marker);
                 if (fromCmp >= 0 && toCmp <= 0 || fromCmp <= 0 && toCmp >= 0)
                     continue;
-                if (fromCmp <= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? b.cmp(found.to, from) >= 0 : b.cmp(found.to, from) > 0) || fromCmp >= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? b.cmp(found.from, to) <= 0 : b.cmp(found.from, to) < 0))
+                if (fromCmp <= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? pos.cmp(found.to, from) >= 0 : pos.cmp(found.to, from) > 0) || fromCmp >= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? pos.cmp(found.from, to) <= 0 : pos.cmp(found.from, to) < 0))
                     return true;
             }
     }
@@ -961,23 +961,23 @@ define('skylark-codemirror/primitives/line/spans',[
         return lines;
     }
     function visualLineNo(doc, lineN) {
-        let line = d.getLine(doc, lineN), vis = visualLine(line);
+        let line = utils_line.getLine(doc, lineN), vis = visualLine(line);
         if (line == vis)
             return lineN;
-        return d.lineNo(vis);
+        return utils_line.lineNo(vis);
     }
     function visualLineEndNo(doc, lineN) {
         if (lineN > doc.lastLine())
             return lineN;
-        let line = d.getLine(doc, lineN), merged;
+        let line = utils_line.getLine(doc, lineN), merged;
         if (!lineIsHidden(doc, line))
             return lineN;
         while (merged = collapsedSpanAtEnd(line))
             line = merged.find(1, true).line;
-        return d.lineNo(line) + 1;
+        return utils_line.lineNo(line) + 1;
     }
     function lineIsHidden(doc, line) {
-        let sps = c.sawCollapsedSpans && line.markedSpans;
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans;
         if (sps)
             for (let sp, i = 0; i < sps.length; ++i) {
                 sp = sps[i];
@@ -1045,7 +1045,7 @@ define('skylark-codemirror/primitives/line/spans',[
     }
     function findMaxLine(cm) {
         let d = cm.display, doc = cm.doc;
-        d.maxLine = d.getLine(doc, doc.first);
+        d.maxLine = utils_line.getLine(doc, doc.first);
         d.maxLineLength = lineLength(d.maxLine);
         d.maxLineChanged = true;
         doc.iter(line => {
@@ -1709,7 +1709,7 @@ define('skylark-codemirror/primitives/line/highlight',[
     '../util/StringStream',
     './utils_line',
     './pos'
-], function (a, b, StringStream, c, d) {
+], function (misc, modes, StringStream, utils_line, line_pos) {
     'use strict';
     class SavedContext {
         constructor(state, lookAhead) {
@@ -1750,12 +1750,12 @@ define('skylark-codemirror/primitives/line/highlight',[
         }
         static fromSaved(doc, saved, line) {
             if (saved instanceof SavedContext)
-                return new Context(doc, b.copyState(doc.mode, saved.state), line, saved.lookAhead);
+                return new Context(doc, modes.copyState(doc.mode, saved.state), line, saved.lookAhead);
             else
-                return new Context(doc, b.copyState(doc.mode, saved), line);
+                return new Context(doc, modes.copyState(doc.mode, saved), line);
         }
         save(copy) {
-            let state = copy !== false ? b.copyState(this.doc.mode, this.state) : this.state;
+            let state = copy !== false ? modes.copyState(this.doc.mode, this.state) : this.state;
             return this.maxLookAhead > 0 ? new SavedContext(state, this.maxLookAhead) : state;
         }
     }
@@ -1799,8 +1799,8 @@ define('skylark-codemirror/primitives/line/highlight',[
     }
     function getLineStyles(cm, line, updateFrontier) {
         if (!line.styles || line.styles[0] != cm.state.modeGen) {
-            let context = getContextBefore(cm, c.lineNo(line));
-            let resetState = line.text.length > cm.options.maxHighlightLength && b.copyState(cm.doc.mode, context.state);
+            let context = getContextBefore(cm, utils_line.lineNo(line));
+            let resetState = line.text.length > cm.options.maxHighlightLength && modes.copyState(cm.doc.mode, context.state);
             let result = highlightLine(cm, line, context);
             if (resetState)
                 context.state = resetState;
@@ -1820,8 +1820,8 @@ define('skylark-codemirror/primitives/line/highlight',[
         if (!doc.mode.startState)
             return new Context(doc, true, n);
         let start = findStartLine(cm, n, precise);
-        let saved = start > doc.first && c.getLine(doc, start - 1).stateAfter;
-        let context = saved ? Context.fromSaved(doc, saved, start) : new Context(doc, b.startState(doc.mode), start);
+        let saved = start > doc.first && utils_line.getLine(doc, start - 1).stateAfter;
+        let context = saved ? Context.fromSaved(doc, saved, start) : new Context(doc, modes.startState(doc.mode), start);
         doc.iter(start, n, line => {
             processLine(cm, line.text, context);
             let pos = context.line;
@@ -1848,14 +1848,14 @@ define('skylark-codemirror/primitives/line/highlight',[
             return mode.blankLine(state);
         if (!mode.innerMode)
             return;
-        let inner = b.innerMode(mode, state);
+        let inner = modes.innerMode(mode, state);
         if (inner.mode.blankLine)
             return inner.mode.blankLine(inner.state);
     }
     function readToken(mode, stream, state, inner) {
         for (let i = 0; i < 10; i++) {
             if (inner)
-                inner[0] = b.innerMode(mode, state).mode;
+                inner[0] = modes.innerMode(mode, state).mode;
             let style = mode.token(stream, state);
             if (stream.pos > stream.start)
                 return style;
@@ -1873,8 +1873,8 @@ define('skylark-codemirror/primitives/line/highlight',[
     }
     function takeToken(cm, pos, precise, asArray) {
         let doc = cm.doc, mode = doc.mode, style;
-        pos = d.clipPos(doc, pos);
-        let line = c.getLine(doc, pos.line), context = getContextBefore(cm, pos.line, precise);
+        pos = line_pos.clipPos(doc, pos);
+        let line = utils_line.getLine(doc, pos.line), context = getContextBefore(cm, pos.line, precise);
         let stream = new StringStream(line.text, cm.options.tabSize, context), tokens;
         if (asArray)
             tokens = [];
@@ -1882,7 +1882,7 @@ define('skylark-codemirror/primitives/line/highlight',[
             stream.start = stream.pos;
             style = readToken(mode, stream, context.state);
             if (asArray)
-                tokens.push(new Token(stream, style, b.copyState(doc.mode, context.state)));
+                tokens.push(new Token(stream, style, modes.copyState(doc.mode, context.state)));
         }
         return asArray ? tokens : new Token(stream, style, context.state);
     }
@@ -1946,10 +1946,10 @@ define('skylark-codemirror/primitives/line/highlight',[
         for (let search = n; search > lim; --search) {
             if (search <= doc.first)
                 return doc.first;
-            let line = c.getLine(doc, search - 1), after = line.stateAfter;
+            let line = utils_line.getLine(doc, search - 1), after = line.stateAfter;
             if (after && (!precise || search + (after instanceof SavedContext ? after.lookAhead : 0) <= doc.modeFrontier))
                 return search;
-            let indented = a.countColumn(line.text, null, cm.options.tabSize);
+            let indented = misc.countColumn(line.text, null, cm.options.tabSize);
             if (minline == null || minindent > indented) {
                 minline = search - 1;
                 minindent = indented;
@@ -1963,7 +1963,7 @@ define('skylark-codemirror/primitives/line/highlight',[
             return;
         let start = doc.first;
         for (let line = n - 1; line > start; line--) {
-            let saved = c.getLine(doc, line).stateAfter;
+            let saved = utils_line.getLine(doc, line).stateAfter;
             if (saved && (!(saved instanceof SavedContext) || line + saved.lookAhead < n)) {
                 start = line + 1;
                 break;
@@ -3460,7 +3460,7 @@ define('skylark-codemirror/primitives/display/focus',[
     '../util/browser',
     '../util/dom',
     '../util/event'
-], function (a, b, c, d) {
+], function (selection, browser, dom, event) {
     'use strict';
     function ensureFocus(cm) {
         if (!cm.state.focused) {
@@ -3483,25 +3483,25 @@ define('skylark-codemirror/primitives/display/focus',[
         if (cm.options.readOnly == 'nocursor')
             return;
         if (!cm.state.focused) {
-            d.signal(cm, 'focus', cm, e);
+            event.signal(cm, 'focus', cm, e);
             cm.state.focused = true;
-            c.addClass(cm.display.wrapper, 'CodeMirror-focused');
+            dom.addClass(cm.display.wrapper, 'CodeMirror-focused');
             if (!cm.curOp && cm.display.selForContextMenu != cm.doc.sel) {
                 cm.display.input.reset();
-                if (b.webkit)
+                if (browser.webkit)
                     setTimeout(() => cm.display.input.reset(true), 20);
             }
             cm.display.input.receivedFocus();
         }
-        a.restartBlink(cm);
+        selection.restartBlink(cm);
     }
     function onBlur(cm, e) {
         if (cm.state.delayingBlurEvent)
             return;
         if (cm.state.focused) {
-            d.signal(cm, 'blur', cm, e);
+            event.signal(cm, 'blur', cm, e);
             cm.state.focused = false;
-            c.rmClass(cm.display.wrapper, 'CodeMirror-focused');
+            dom.rmClass(cm.display.wrapper, 'CodeMirror-focused');
         }
         clearInterval(cm.display.blinker);
         setTimeout(() => {
@@ -3990,25 +3990,25 @@ define('skylark-codemirror/primitives/display/gutters',[
     '../util/dom',
     '../util/misc',
     './update_display'
-], function (a, b, c) {
+], function (dom, misc, update_display) {
     'use strict';
     function updateGutters(cm) {
         let gutters = cm.display.gutters, specs = cm.options.gutters;
-        a.removeChildren(gutters);
+        dom.removeChildren(gutters);
         let i = 0;
         for (; i < specs.length; ++i) {
             let gutterClass = specs[i];
-            let gElt = gutters.appendChild(a.elt('div', null, 'CodeMirror-gutter ' + gutterClass));
+            let gElt = gutters.appendChild(dom.elt('div', null, 'CodeMirror-gutter ' + gutterClass));
             if (gutterClass == 'CodeMirror-linenumbers') {
                 cm.display.lineGutter = gElt;
                 gElt.style.width = (cm.display.lineNumWidth || 1) + 'px';
             }
         }
         gutters.style.display = i ? '' : 'none';
-        c.updateGutterSpace(cm);
+        update_display.updateGutterSpace(cm);
     }
     function setGuttersForLineNumbers(options) {
-        let found = b.indexOf(options.gutters, 'CodeMirror-linenumbers');
+        let found = misc.indexOf(options.gutters, 'CodeMirror-linenumbers');
         if (found == -1 && options.lineNumbers) {
             options.gutters = options.gutters.concat(['CodeMirror-linenumbers']);
         } else if (found > -1 && !options.lineNumbers) {
@@ -4026,13 +4026,13 @@ define('skylark-codemirror/primitives/display/line_numbers',[
     '../measurement/position_measurement',
     '../util/dom',
     './update_display'
-], function (a, b, c, d) {
+], function (utils_line, position_measurement, dom, update_display) {
     'use strict';
     function alignHorizontally(cm) {
         let display = cm.display, view = display.view;
         if (!display.alignWidgets && (!display.gutters.firstChild || !cm.options.fixedGutter))
             return;
-        let comp = b.compensateForHScroll(display) - display.scroller.scrollLeft + cm.doc.scrollLeft;
+        let comp = position_measurement.compensateForHScroll(display) - display.scroller.scrollLeft + cm.doc.scrollLeft;
         let gutterW = display.gutters.offsetWidth, left = comp + 'px';
         for (let i = 0; i < view.length; i++)
             if (!view[i].hidden) {
@@ -4053,16 +4053,16 @@ define('skylark-codemirror/primitives/display/line_numbers',[
     function maybeUpdateLineNumberWidth(cm) {
         if (!cm.options.lineNumbers)
             return false;
-        let doc = cm.doc, last = a.lineNumberFor(cm.options, doc.first + doc.size - 1), display = cm.display;
+        let doc = cm.doc, last = utils_line.lineNumberFor(cm.options, doc.first + doc.size - 1), display = cm.display;
         if (last.length != display.lineNumChars) {
-            let test = display.measure.appendChild(c.elt('div', [c.elt('div', last)], 'CodeMirror-linenumber CodeMirror-gutter-elt'));
+            let test = display.measure.appendChild(dom.elt('div', [dom.elt('div', last)], 'CodeMirror-linenumber CodeMirror-gutter-elt'));
             let innerW = test.firstChild.offsetWidth, padding = test.offsetWidth - innerW;
             display.lineGutter.style.width = '';
             display.lineNumInnerWidth = Math.max(innerW, display.lineGutter.offsetWidth - padding) + 1;
             display.lineNumWidth = display.lineNumInnerWidth + padding;
             display.lineNumChars = display.lineNumInnerWidth ? last.length : -1;
             display.lineGutter.style.width = display.lineNumWidth + 'px';
-            d.updateGutterSpace(cm);
+            update_display.updateGutterSpace(cm);
             return true;
         }
         return false;
@@ -4078,24 +4078,24 @@ define('skylark-codemirror/primitives/display/highlight_worker',[
     '../util/misc',
     './operations',
     './view_tracking'
-], function (a, b, c, d, e) {
+], function (highlight, models, misc, operations, view_tracking) {
     'use strict';
     function startWorker(cm, time) {
         if (cm.doc.highlightFrontier < cm.display.viewTo)
-            cm.state.highlight.set(time, c.bind(highlightWorker, cm));
+            cm.state.highlight.set(time, misc.bind(highlightWorker, cm));
     }
     function highlightWorker(cm) {
         let doc = cm.doc;
         if (doc.highlightFrontier >= cm.display.viewTo)
             return;
         let end = +new Date() + cm.options.workTime;
-        let context = a.getContextBefore(cm, doc.highlightFrontier);
+        let context = highlight.getContextBefore(cm, doc.highlightFrontier);
         let changedLines = [];
         doc.iter(context.line, Math.min(doc.first + doc.size, cm.display.viewTo + 500), line => {
             if (context.line >= cm.display.viewFrom) {
                 let oldStyles = line.styles;
-                let resetState = line.text.length > cm.options.maxHighlightLength ? b.copyState(doc.mode, context.state) : null;
-                let highlighted = a.highlightLine(cm, line, context, true);
+                let resetState = line.text.length > cm.options.maxHighlightLength ? models.copyState(doc.mode, context.state) : null;
+                let highlighted = highlight.highlightLine(cm, line, context, true);
                 if (resetState)
                     context.state = resetState;
                 line.styles = highlighted.styles;
@@ -4113,7 +4113,7 @@ define('skylark-codemirror/primitives/display/highlight_worker',[
                 context.nextLine();
             } else {
                 if (line.text.length <= cm.options.maxHighlightLength)
-                    a.processLine(cm, line.text, context);
+                    highlight.processLine(cm, line.text, context);
                 line.stateAfter = context.line % 5 == 0 ? context.save() : null;
                 context.nextLine();
             }
@@ -4125,9 +4125,9 @@ define('skylark-codemirror/primitives/display/highlight_worker',[
         doc.highlightFrontier = context.line;
         doc.modeFrontier = Math.max(doc.modeFrontier, context.line);
         if (changedLines.length)
-            d.runInOp(cm, () => {
+            operations.runInOp(cm, () => {
                 for (let i = 0; i < changedLines.length; i++)
-                    e.regLineChange(cm, changedLines[i], 'text');
+                    view_tracking.regLineChange(cm, changedLines[i], 'text');
             });
     }
     return { startWorker: startWorker };
@@ -4908,40 +4908,40 @@ define('skylark-codemirror/primitives/model/change_measurement',[
     '../line/pos',
     '../util/misc',
     './selection'
-], function (a, b, c) {
+], function (line_pos, misc, selection) {
     'use strict';
     function changeEnd(change) {
         if (!change.text)
             return change.to;
-        return a.Pos(change.from.line + change.text.length - 1, b.lst(change.text).length + (change.text.length == 1 ? change.from.ch : 0));
+        return line_pos.Pos(change.from.line + change.text.length - 1, misc.lst(change.text).length + (change.text.length == 1 ? change.from.ch : 0));
     }
     function adjustForChange(pos, change) {
-        if (a.cmp(pos, change.from) < 0)
+        if (line_pos.cmp(pos, change.from) < 0)
             return pos;
-        if (a.cmp(pos, change.to) <= 0)
+        if (line_pos.cmp(pos, change.to) <= 0)
             return changeEnd(change);
         let line = pos.line + change.text.length - (change.to.line - change.from.line) - 1, ch = pos.ch;
         if (pos.line == change.to.line)
             ch += changeEnd(change).ch - change.to.ch;
-        return a.Pos(line, ch);
+        return line_pos.Pos(line, ch);
     }
     function computeSelAfterChange(doc, change) {
         let out = [];
         for (let i = 0; i < doc.sel.ranges.length; i++) {
             let range = doc.sel.ranges[i];
-            out.push(new c.Range(adjustForChange(range.anchor, change), adjustForChange(range.head, change)));
+            out.push(new selection.Range(adjustForChange(range.anchor, change), adjustForChange(range.head, change)));
         }
-        return c.normalizeSelection(doc.cm, out, doc.sel.primIndex);
+        return selection.normalizeSelection(doc.cm, out, doc.sel.primIndex);
     }
     function offsetPos(pos, old, nw) {
         if (pos.line == old.line)
-            return a.Pos(nw.line, pos.ch - old.ch + nw.ch);
+            return line_pos.Pos(nw.line, pos.ch - old.ch + nw.ch);
         else
-            return a.Pos(nw.line + (pos.line - old.line), pos.ch);
+            return line_pos.Pos(nw.line + (pos.line - old.line), pos.ch);
     }
     function computeReplacedSel(doc, changes, hint) {
         let out = [];
-        let oldPrev = a.Pos(doc.first, 0), newPrev = oldPrev;
+        let oldPrev = line_pos.Pos(doc.first, 0), newPrev = oldPrev;
         for (let i = 0; i < changes.length; i++) {
             let change = changes[i];
             let from = offsetPos(change.from, oldPrev, newPrev);
@@ -4949,13 +4949,13 @@ define('skylark-codemirror/primitives/model/change_measurement',[
             oldPrev = change.to;
             newPrev = to;
             if (hint == 'around') {
-                let range = doc.sel.ranges[i], inv = a.cmp(range.head, range.anchor) < 0;
-                out[i] = new c.Range(inv ? to : from, inv ? from : to);
+                let range = doc.sel.ranges[i], inv = line_pos.cmp(range.head, range.anchor) < 0;
+                out[i] = new selection.Range(inv ? to : from, inv ? from : to);
             } else {
-                out[i] = new c.Range(from, from);
+                out[i] = new selection.Range(from, from);
             }
         }
-        return new c.Selection(out, doc.sel.primIndex);
+        return new selection.Selection(out, doc.sel.primIndex);
     }
     return {
         changeEnd: changeEnd,
@@ -4967,10 +4967,10 @@ define('skylark-codemirror/primitives/display/mode_state',[
     '../modes',
     './highlight_worker',
     './view_tracking'
-], function (a, b, c) {
+], function (models, highlight_worker, view_tracking) {
     'use strict';
     function loadMode(cm) {
-        cm.doc.mode = a.getMode(cm.options, cm.doc.modeOption);
+        cm.doc.mode = models.getMode(cm.options, cm.doc.modeOption);
         resetModeState(cm);
     }
     function resetModeState(cm) {
@@ -4981,10 +4981,10 @@ define('skylark-codemirror/primitives/display/mode_state',[
                 line.styles = null;
         });
         cm.doc.modeFrontier = cm.doc.highlightFrontier = cm.doc.first;
-        b.startWorker(cm, 100);
+        highlight_worker.startWorker(cm, 100);
         cm.state.modeGen++;
         if (cm.curOp)
-            c.regChange(cm);
+            view_tracking.regChange(cm);
     }
     return {
         loadMode: loadMode,
@@ -7127,7 +7127,7 @@ define('skylark-codemirror/primitives/input/keymap',[
     '../util/browser',
     '../util/misc',
     './keynames'
-], function (a, b, c) {
+], function (browser, misc, keynames) {
     'use strict';
     let keyMap = {};
     keyMap.basic = {
@@ -7232,7 +7232,7 @@ define('skylark-codemirror/primitives/input/keymap',[
             'emacsy'
         ]
     };
-    keyMap['default'] = a.mac ? keyMap.macDefault : keyMap.pcDefault;
+    keyMap['default'] = browser.mac ? keyMap.macDefault : keyMap.pcDefault;
     function normalizeKeyName(name) {
         let parts = name.split(/-(?!$)/);
         name = parts[parts.length - 1];
@@ -7271,7 +7271,7 @@ define('skylark-codemirror/primitives/input/keymap',[
                     delete keymap[keyname];
                     continue;
                 }
-                let keys = b.map(keyname.split(' '), normalizeKeyName);
+                let keys = misc.map(keyname.split(' '), normalizeKeyName);
                 for (let i = 0; i < keys.length; i++) {
                     let val, name;
                     if (i == keys.length - 1) {
@@ -7313,25 +7313,25 @@ define('skylark-codemirror/primitives/input/keymap',[
         }
     }
     function isModifierKey(value) {
-        let name = typeof value == 'string' ? value : c.keyNames[value.keyCode];
+        let name = typeof value == 'string' ? value : keynames.keyNames[value.keyCode];
         return name == 'Ctrl' || name == 'Alt' || name == 'Shift' || name == 'Mod';
     }
     function addModifierNames(name, event, noShift) {
         let base = name;
         if (event.altKey && base != 'Alt')
             name = 'Alt-' + name;
-        if ((a.flipCtrlCmd ? event.metaKey : event.ctrlKey) && base != 'Ctrl')
+        if ((browser.flipCtrlCmd ? event.metaKey : event.ctrlKey) && base != 'Ctrl')
             name = 'Ctrl-' + name;
-        if ((a.flipCtrlCmd ? event.ctrlKey : event.metaKey) && base != 'Cmd')
+        if ((browser.flipCtrlCmd ? event.ctrlKey : event.metaKey) && base != 'Cmd')
             name = 'Cmd-' + name;
         if (!noShift && event.shiftKey && base != 'Shift')
             name = 'Shift-' + name;
         return name;
     }
     function keyName(event, noShift) {
-        if (a.presto && event.keyCode == 34 && event['char'])
+        if (browser.presto && event.keyCode == 34 && event['char'])
             return false;
-        let name = c.keyNames[event.keyCode];
+        let name = keynames.keyNames[event.keyCode];
         if (name == null || event.altGraphKey)
             return false;
         if (event.keyCode == 3 && event.code)
@@ -7862,7 +7862,7 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
     '../input/keymap',
     './key_events',
     './commands'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r) {
+], function (focus, operations, update_lines, line_pos, utils_line, position_measurement, widgets, selection, selection_updates, browser, bidi, dom, events, n, o, p, q, r) {
     'use strict';
     const DOUBLECLICK_DELAY = 400;
     class PastClick {
@@ -7872,7 +7872,7 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
             this.button = button;
         }
         compare(time, pos, button) {
-            return this.time + DOUBLECLICK_DELAY > time && d.cmp(pos, this.pos) == 0 && button == this.button;
+            return this.time + DOUBLECLICK_DELAY > time && line_pos.cmp(pos, this.pos) == 0 && button == this.button;
         }
     }
     let lastClick, lastDoubleClick;
@@ -7893,12 +7893,12 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
     }
     function onMouseDown(e) {
         let cm = this, display = cm.display;
-        if (m.signalDOMEvent(cm, e) || display.activeTouch && display.input.supportsTouch())
+        if (events.signalDOMEvent(cm, e) || display.activeTouch && display.input.supportsTouch())
             return;
         display.input.ensurePolled();
         display.shift = e.shiftKey;
-        if (g.eventInWidget(display, e)) {
-            if (!j.webkit) {
+        if (widgets.eventInWidget(display, e)) {
+            if (!browser.webkit) {
                 display.scroller.draggable = false;
                 setTimeout(() => display.scroller.draggable = true, 100);
             }
@@ -7906,7 +7906,7 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         }
         if (clickInGutter(cm, e))
             return;
-        let pos = f.posFromMouse(cm, e), button = m.e_button(e), repeat = pos ? clickRepeat(pos, button) : 'single';
+        let pos = position_measurement.posFromMouse(cm, e), button = events.e_button(e), repeat = pos ? clickRepeat(pos, button) : 'single';
         window.focus();
         if (button == 1 && cm.state.selectingText)
             cm.state.selectingText(e);
@@ -7915,17 +7915,17 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         if (button == 1) {
             if (pos)
                 leftButtonDown(cm, pos, repeat, e);
-            else if (m.e_target(e) == display.scroller)
-                m.e_preventDefault(e);
+            else if (events.e_target(e) == display.scroller)
+                events.e_preventDefault(e);
         } else if (button == 2) {
             if (pos)
-                i.extendSelection(cm.doc, pos);
+                selection_updates.extendSelection(cm.doc, pos);
             setTimeout(() => display.input.focus(), 20);
         } else if (button == 3) {
-            if (j.captureRightClick)
+            if (browser.captureRightClick)
                 cm.display.input.onContextMenu(e);
             else
-                a.delayBlurEvent(cm);
+                focus.delayBlurEvent(cm);
         }
     }
     function handleMappedButton(cm, button, pos, repeat, event) {
@@ -7955,44 +7955,44 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         let option = cm.getOption('configureMouse');
         let value = option ? option(cm, repeat, event) : {};
         if (value.unit == null) {
-            let rect = j.chromeOS ? event.shiftKey && event.metaKey : event.altKey;
+            let rect = browser.chromeOS ? event.shiftKey && event.metaKey : event.altKey;
             value.unit = rect ? 'rectangle' : repeat == 'single' ? 'char' : repeat == 'double' ? 'word' : 'line';
         }
         if (value.extend == null || cm.doc.extend)
             value.extend = cm.doc.extend || event.shiftKey;
         if (value.addNew == null)
-            value.addNew = j.mac ? event.metaKey : event.ctrlKey;
+            value.addNew = browser.mac ? event.metaKey : event.ctrlKey;
         if (value.moveOnDrag == null)
-            value.moveOnDrag = !(j.mac ? event.altKey : event.ctrlKey);
+            value.moveOnDrag = !(browser.mac ? event.altKey : event.ctrlKey);
         return value;
     }
     function leftButtonDown(cm, pos, repeat, event) {
-        if (j.ie)
-            setTimeout(o.bind(a.ensureFocus, cm), 0);
+        if (browser.ie)
+            setTimeout(o.bind(focus.ensureFocus, cm), 0);
         else
-            cm.curOp.focus = l.activeElt();
+            cm.curOp.focus = dom.activeElt();
         let behavior = configureMouse(cm, repeat, event);
         let sel = cm.doc.sel, contained;
-        if (cm.options.dragDrop && n.dragAndDrop && !cm.isReadOnly() && repeat == 'single' && (contained = sel.contains(pos)) > -1 && (d.cmp((contained = sel.ranges[contained]).from(), pos) < 0 || pos.xRel > 0) && (d.cmp(contained.to(), pos) > 0 || pos.xRel < 0))
+        if (cm.options.dragDrop && n.dragAndDrop && !cm.isReadOnly() && repeat == 'single' && (contained = sel.contains(pos)) > -1 && (line_pos.cmp((contained = sel.ranges[contained]).from(), pos) < 0 || pos.xRel > 0) && (line_pos.cmp(contained.to(), pos) > 0 || pos.xRel < 0))
             leftButtonStartDrag(cm, event, pos, behavior);
         else
             leftButtonSelect(cm, event, pos, behavior);
     }
     function leftButtonStartDrag(cm, event, pos, behavior) {
         let display = cm.display, moved = false;
-        let dragEnd = b.operation(cm, e => {
-            if (j.webkit)
+        let dragEnd = operations.operation(cm, e => {
+            if (browser.webkit)
                 display.scroller.draggable = false;
             cm.state.draggingText = false;
-            m.off(display.wrapper.ownerDocument, 'mouseup', dragEnd);
-            m.off(display.wrapper.ownerDocument, 'mousemove', mouseMove);
-            m.off(display.scroller, 'dragstart', dragStart);
-            m.off(display.scroller, 'drop', dragEnd);
+            events.off(display.wrapper.ownerDocument, 'mouseup', dragEnd);
+            events.off(display.wrapper.ownerDocument, 'mousemove', mouseMove);
+            events.off(display.scroller, 'dragstart', dragStart);
+            events.off(display.scroller, 'drop', dragEnd);
             if (!moved) {
-                m.e_preventDefault(e);
+                events.e_preventDefault(e);
                 if (!behavior.addNew)
-                    i.extendSelection(cm.doc, pos, null, null, behavior.extend);
-                if (j.webkit || j.ie && j.ie_version == 9)
+                    selection_updates.extendSelection(cm.doc, pos, null, null, behavior.extend);
+                if (browser.webkit || browser.ie && browser.ie_version == 9)
                     setTimeout(() => {
                         display.wrapper.ownerDocument.body.focus();
                         display.input.focus();
@@ -8005,94 +8005,94 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
             moved = moved || Math.abs(event.clientX - e2.clientX) + Math.abs(event.clientY - e2.clientY) >= 10;
         };
         let dragStart = () => moved = true;
-        if (j.webkit)
+        if (browser.webkit)
             display.scroller.draggable = true;
         cm.state.draggingText = dragEnd;
         dragEnd.copy = !behavior.moveOnDrag;
         if (display.scroller.dragDrop)
             display.scroller.dragDrop();
-        m.on(display.wrapper.ownerDocument, 'mouseup', dragEnd);
-        m.on(display.wrapper.ownerDocument, 'mousemove', mouseMove);
-        m.on(display.scroller, 'dragstart', dragStart);
-        m.on(display.scroller, 'drop', dragEnd);
-        a.delayBlurEvent(cm);
+        events.on(display.wrapper.ownerDocument, 'mouseup', dragEnd);
+        events.on(display.wrapper.ownerDocument, 'mousemove', mouseMove);
+        events.on(display.scroller, 'dragstart', dragStart);
+        events.on(display.scroller, 'drop', dragEnd);
+        focus.delayBlurEvent(cm);
         setTimeout(() => display.input.focus(), 20);
     }
     function rangeForUnit(cm, pos, unit) {
         if (unit == 'char')
-            return new h.Range(pos, pos);
+            return new selection.Range(pos, pos);
         if (unit == 'word')
             return cm.findWordAt(pos);
         if (unit == 'line')
-            return new h.Range(d.Pos(pos.line, 0), d.clipPos(cm.doc, d.Pos(pos.line + 1, 0)));
+            return new selection.Range(line_pos.Pos(pos.line, 0), line_pos.clipPos(cm.doc, line_pos.Pos(pos.line + 1, 0)));
         let result = unit(cm, pos);
-        return new h.Range(result.from, result.to);
+        return new selection.Range(result.from, result.to);
     }
     function leftButtonSelect(cm, event, start, behavior) {
         let display = cm.display, doc = cm.doc;
-        m.e_preventDefault(event);
+        events.e_preventDefault(event);
         let ourRange, ourIndex, startSel = doc.sel, ranges = startSel.ranges;
         if (behavior.addNew && !behavior.extend) {
             ourIndex = doc.sel.contains(start);
             if (ourIndex > -1)
                 ourRange = ranges[ourIndex];
             else
-                ourRange = new h.Range(start, start);
+                ourRange = new selection.Range(start, start);
         } else {
             ourRange = doc.sel.primary();
             ourIndex = doc.sel.primIndex;
         }
         if (behavior.unit == 'rectangle') {
             if (!behavior.addNew)
-                ourRange = new h.Range(start, start);
-            start = f.posFromMouse(cm, event, true, true);
+                ourRange = new selection.Range(start, start);
+            start = position_measurement.posFromMouse(cm, event, true, true);
             ourIndex = -1;
         } else {
             let range = rangeForUnit(cm, start, behavior.unit);
             if (behavior.extend)
-                ourRange = i.extendRange(ourRange, range.anchor, range.head, behavior.extend);
+                ourRange = selection_updates.extendRange(ourRange, range.anchor, range.head, behavior.extend);
             else
                 ourRange = range;
         }
         if (!behavior.addNew) {
             ourIndex = 0;
-            i.setSelection(doc, new h.Selection([ourRange], 0), o.sel_mouse);
+            selection_updates.setSelection(doc, new selection.Selection([ourRange], 0), o.sel_mouse);
             startSel = doc.sel;
         } else if (ourIndex == -1) {
             ourIndex = ranges.length;
-            i.setSelection(doc, h.normalizeSelection(cm, ranges.concat([ourRange]), ourIndex), {
+            selection_updates.setSelection(doc, selection.normalizeSelection(cm, ranges.concat([ourRange]), ourIndex), {
                 scroll: false,
                 origin: '*mouse'
             });
         } else if (ranges.length > 1 && ranges[ourIndex].empty() && behavior.unit == 'char' && !behavior.extend) {
-            i.setSelection(doc, h.normalizeSelection(cm, ranges.slice(0, ourIndex).concat(ranges.slice(ourIndex + 1)), 0), {
+            selection_updates.setSelection(doc, selection.normalizeSelection(cm, ranges.slice(0, ourIndex).concat(ranges.slice(ourIndex + 1)), 0), {
                 scroll: false,
                 origin: '*mouse'
             });
             startSel = doc.sel;
         } else {
-            i.replaceOneSelection(doc, ourIndex, ourRange, o.sel_mouse);
+            selection_updates.replaceOneSelection(doc, ourIndex, ourRange, o.sel_mouse);
         }
         let lastPos = start;
         function extendTo(pos) {
-            if (d.cmp(lastPos, pos) == 0)
+            if (line_pos.cmp(lastPos, pos) == 0)
                 return;
             lastPos = pos;
             if (behavior.unit == 'rectangle') {
                 let ranges = [], tabSize = cm.options.tabSize;
-                let startCol = o.countColumn(e.getLine(doc, start.line).text, start.ch, tabSize);
-                let posCol = o.countColumn(e.getLine(doc, pos.line).text, pos.ch, tabSize);
+                let startCol = o.countColumn(utils_line.getLine(doc, start.line).text, start.ch, tabSize);
+                let posCol = o.countColumn(utils_line.getLine(doc, pos.line).text, pos.ch, tabSize);
                 let left = Math.min(startCol, posCol), right = Math.max(startCol, posCol);
                 for (let line = Math.min(start.line, pos.line), end = Math.min(cm.lastLine(), Math.max(start.line, pos.line)); line <= end; line++) {
-                    let text = e.getLine(doc, line).text, leftPos = o.findColumn(text, left, tabSize);
+                    let text = utils_line.getLine(doc, line).text, leftPos = o.findColumn(text, left, tabSize);
                     if (left == right)
-                        ranges.push(new h.Range(d.Pos(line, leftPos), d.Pos(line, leftPos)));
+                        ranges.push(new selection.Range(line_pos.Pos(line, leftPos), line_pos.Pos(line, leftPos)));
                     else if (text.length > leftPos)
-                        ranges.push(new h.Range(d.Pos(line, leftPos), d.Pos(line, o.findColumn(text, right, tabSize))));
+                        ranges.push(new selection.Range(line_pos.Pos(line, leftPos), line_pos.Pos(line, o.findColumn(text, right, tabSize))));
                 }
                 if (!ranges.length)
-                    ranges.push(new h.Range(start, start));
-                i.setSelection(doc, h.normalizeSelection(cm, startSel.ranges.slice(0, ourIndex).concat(ranges), ourIndex), {
+                    ranges.push(new selection.Range(start, start));
+                selection_updates.setSelection(doc, selection.normalizeSelection(cm, startSel.ranges.slice(0, ourIndex).concat(ranges), ourIndex), {
                     origin: '*mouse',
                     scroll: false
                 });
@@ -8101,38 +8101,38 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
                 let oldRange = ourRange;
                 let range = rangeForUnit(cm, pos, behavior.unit);
                 let anchor = oldRange.anchor, head;
-                if (d.cmp(range.anchor, anchor) > 0) {
+                if (line_pos.cmp(range.anchor, anchor) > 0) {
                     head = range.head;
-                    anchor = d.minPos(oldRange.from(), range.anchor);
+                    anchor = line_pos.minPos(oldRange.from(), range.anchor);
                 } else {
                     head = range.anchor;
-                    anchor = d.maxPos(oldRange.to(), range.head);
+                    anchor = line_pos.maxPos(oldRange.to(), range.head);
                 }
                 let ranges = startSel.ranges.slice(0);
-                ranges[ourIndex] = bidiSimplify(cm, new h.Range(d.clipPos(doc, anchor), head));
-                i.setSelection(doc, h.normalizeSelection(cm, ranges, ourIndex), o.sel_mouse);
+                ranges[ourIndex] = bidiSimplify(cm, new selection.Range(line_pos.clipPos(doc, anchor), head));
+                selection_updates.setSelection(doc, selection.normalizeSelection(cm, ranges, ourIndex), o.sel_mouse);
             }
         }
         let editorSize = display.wrapper.getBoundingClientRect();
         let counter = 0;
         function extend(e) {
             let curCount = ++counter;
-            let cur = f.posFromMouse(cm, e, true, behavior.unit == 'rectangle');
+            let cur = position_measurement.posFromMouse(cm, e, true, behavior.unit == 'rectangle');
             if (!cur)
                 return;
-            if (d.cmp(cur, lastPos) != 0) {
-                cm.curOp.focus = l.activeElt();
+            if (line_pos.cmp(cur, lastPos) != 0) {
+                cm.curOp.focus = dom.activeElt();
                 extendTo(cur);
-                let visible = c.visibleLines(display, doc);
+                let visible = update_lines.visibleLines(display, doc);
                 if (cur.line >= visible.to || cur.line < visible.from)
-                    setTimeout(b.operation(cm, () => {
+                    setTimeout(operations.operation(cm, () => {
                         if (counter == curCount)
                             extend(e);
                     }), 150);
             } else {
                 let outside = e.clientY < editorSize.top ? -20 : e.clientY > editorSize.bottom ? 20 : 0;
                 if (outside)
-                    setTimeout(b.operation(cm, () => {
+                    setTimeout(operations.operation(cm, () => {
                         if (counter != curCount)
                             return;
                         display.scroller.scrollTop += outside;
@@ -8143,31 +8143,31 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         function done(e) {
             cm.state.selectingText = false;
             counter = Infinity;
-            m.e_preventDefault(e);
+            events.e_preventDefault(e);
             display.input.focus();
-            m.off(display.wrapper.ownerDocument, 'mousemove', move);
-            m.off(display.wrapper.ownerDocument, 'mouseup', up);
+            events.off(display.wrapper.ownerDocument, 'mousemove', move);
+            events.off(display.wrapper.ownerDocument, 'mouseup', up);
             doc.history.lastSelOrigin = null;
         }
-        let move = b.operation(cm, e => {
-            if (e.buttons === 0 || !m.e_button(e))
+        let move = operations.operation(cm, e => {
+            if (e.buttons === 0 || !events.e_button(e))
                 done(e);
             else
                 extend(e);
         });
-        let up = b.operation(cm, done);
+        let up = operations.operation(cm, done);
         cm.state.selectingText = up;
-        m.on(display.wrapper.ownerDocument, 'mousemove', move);
-        m.on(display.wrapper.ownerDocument, 'mouseup', up);
+        events.on(display.wrapper.ownerDocument, 'mousemove', move);
+        events.on(display.wrapper.ownerDocument, 'mouseup', up);
     }
     function bidiSimplify(cm, range) {
-        let {anchor, head} = range, anchorLine = e.getLine(cm.doc, anchor.line);
-        if (d.cmp(anchor, head) == 0 && anchor.sticky == head.sticky)
+        let {anchor, head} = range, anchorLine = utils_line.getLine(cm.doc, anchor.line);
+        if (line_pos.cmp(anchor, head) == 0 && anchor.sticky == head.sticky)
             return range;
-        let order = k.getOrder(anchorLine);
+        let order = bidi.getOrder(anchorLine);
         if (!order)
             return range;
-        let index = k.getBidiPartAt(order, anchor.ch, anchor.sticky), part = order[index];
+        let index = bidi.getBidiPartAt(order, anchor.ch, anchor.sticky), part = order[index];
         if (part.from != anchor.ch && part.to != anchor.ch)
             return range;
         let boundary = index + (part.from == anchor.ch == (part.level != 1) ? 0 : 1);
@@ -8177,7 +8177,7 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         if (head.line != anchor.line) {
             leftSide = (head.line - anchor.line) * (cm.doc.direction == 'ltr' ? 1 : -1) > 0;
         } else {
-            let headIndex = k.getBidiPartAt(order, head.ch, head.sticky);
+            let headIndex = bidi.getBidiPartAt(order, head.ch, head.sticky);
             let dir = headIndex - index || (head.ch - anchor.ch) * (part.level == 1 ? -1 : 1);
             if (headIndex == boundary - 1 || headIndex == boundary)
                 leftSide = dir < 0;
@@ -8187,7 +8187,7 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         let usePart = order[boundary + (leftSide ? -1 : 0)];
         let from = leftSide == (usePart.level == 1);
         let ch = from ? usePart.from : usePart.to, sticky = from ? 'after' : 'before';
-        return anchor.ch == ch && anchor.sticky == sticky ? range : new h.Range(new d.Pos(anchor.line, ch, sticky), head);
+        return anchor.ch == ch && anchor.sticky == sticky ? range : new selection.Range(new line_pos.Pos(anchor.line, ch, sticky), head);
     }
     function gutterEvent(cm, e, type, prevent) {
         let mX, mY;
@@ -8205,19 +8205,19 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         if (mX >= Math.floor(cm.display.gutters.getBoundingClientRect().right))
             return false;
         if (prevent)
-            m.e_preventDefault(e);
+            events.e_preventDefault(e);
         let display = cm.display;
         let lineBox = display.lineDiv.getBoundingClientRect();
-        if (mY > lineBox.bottom || !m.hasHandler(cm, type))
-            return m.e_defaultPrevented(e);
+        if (mY > lineBox.bottom || !events.hasHandler(cm, type))
+            return events.e_defaultPrevented(e);
         mY -= lineBox.top - display.viewOffset;
         for (let i = 0; i < cm.options.gutters.length; ++i) {
             let g = display.gutters.childNodes[i];
             if (g && g.getBoundingClientRect().right >= mX) {
-                let line = e.lineAtHeight(cm.doc, mY);
+                let line = utils_line.lineAtHeight(cm.doc, mY);
                 let gutter = cm.options.gutters[i];
-                m.signal(cm, type, cm, line, gutter, e);
-                return m.e_defaultPrevented(e);
+                events.signal(cm, type, cm, line, gutter, e);
+                return events.e_defaultPrevented(e);
             }
         }
     }
@@ -8225,15 +8225,15 @@ define('skylark-codemirror/primitives/edit/mouse_events',[
         return gutterEvent(cm, e, 'gutterClick', true);
     }
     function onContextMenu(cm, e) {
-        if (g.eventInWidget(cm.display, e) || contextMenuInGutter(cm, e))
+        if (widgets.eventInWidget(cm.display, e) || contextMenuInGutter(cm, e))
             return;
-        if (m.signalDOMEvent(cm, e, 'contextmenu'))
+        if (events.signalDOMEvent(cm, e, 'contextmenu'))
             return;
-        if (!j.captureRightClick)
+        if (!browser.captureRightClick)
             cm.display.input.onContextMenu(e);
     }
     function contextMenuInGutter(cm, e) {
-        if (!m.hasHandler(cm, 'gutterContextMenu'))
+        if (!events.hasHandler(cm, 'gutterContextMenu'))
             return false;
         return gutterEvent(cm, e, 'gutterContextMenu', false);
     }
@@ -8743,7 +8743,7 @@ define('skylark-codemirror/primitives/input/input',[
     '../util/operation_group',
     '../util/feature_detection',
     './indent'
-], function (a, b, c, d, e, f, g, h, i, j, k) {
+], function (a, b, c, d, e, f, g, h, operation_group, j, k) {
     'use strict';
     let lastCopied = null;
     function setLastCopied(newLastCopied) {
@@ -8787,7 +8787,7 @@ define('skylark-codemirror/primitives/input/input',[
                 origin: origin || (paste ? 'paste' : cm.state.cutIncoming > recent ? 'cut' : '+input')
             };
             e.makeChange(cm.doc, changeEvent);
-            i.signalLater(cm, 'inputRead', cm, changeEvent);
+            operation_group.signalLater(cm, 'inputRead', cm, changeEvent);
         }
         if (inserted && !paste)
             triggerElectric(cm, inserted);
@@ -8827,7 +8827,7 @@ define('skylark-codemirror/primitives/input/input',[
                     indented = k.indentLine(cm, range.head.line, 'smart');
             }
             if (indented)
-                i.signalLater(cm, 'electricInput', cm, range.head.line);
+                operation_group.signalLater(cm, 'electricInput', cm, range.head.line);
         }
     }
     function copyableRanges(cm) {
@@ -10065,14 +10065,14 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
     '../util/event',
     '../util/feature_detection',
     '../util/misc'
-], function (a, b, c, d, e, f, g, h, i, j, k, l) {
+], function (operations, display_selection, inputs, position_measurement, widgets, model_selection, selection_updates, browser, dom, event, feature_detection, misc) {
     'use strict';
     class TextareaInput {
         constructor(cm) {
             this.cm = cm;
             this.prevInput = '';
             this.pollingFast = false;
-            this.polling = new l.Delayed();
+            this.polling = new misc.Delayed();
             this.hasSelection = false;
             this.composing = null;
         }
@@ -10081,50 +10081,50 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             this.createField(display);
             const te = this.textarea;
             display.wrapper.insertBefore(this.wrapper, display.wrapper.firstChild);
-            if (h.ios)
+            if (browser.ios)
                 te.style.width = '0px';
-            j.on(te, 'input', () => {
-                if (h.ie && h.ie_version >= 9 && this.hasSelection)
+            event.on(te, 'input', () => {
+                if (browser.ie && browser.ie_version >= 9 && this.hasSelection)
                     this.hasSelection = null;
                 input.poll();
             });
-            j.on(te, 'paste', e => {
-                if (j.signalDOMEvent(cm, e) || c.handlePaste(e, cm))
+            event.on(te, 'paste', e => {
+                if (event.signalDOMEvent(cm, e) || inputs.handlePaste(e, cm))
                     return;
                 cm.state.pasteIncoming = +new Date();
                 input.fastPoll();
             });
             function prepareCopyCut(e) {
-                if (j.signalDOMEvent(cm, e))
+                if (event.signalDOMEvent(cm, e))
                     return;
                 if (cm.somethingSelected()) {
-                    c.setLastCopied({
+                    inputs.setLastCopied({
                         lineWise: false,
                         text: cm.getSelections()
                     });
                 } else if (!cm.options.lineWiseCopyCut) {
                     return;
                 } else {
-                    let ranges = c.copyableRanges(cm);
-                    c.setLastCopied({
+                    let ranges = inputs.copyableRanges(cm);
+                    inputs.setLastCopied({
                         lineWise: true,
                         text: ranges.text
                     });
                     if (e.type == 'cut') {
-                        cm.setSelections(ranges.ranges, null, l.sel_dontScroll);
+                        cm.setSelections(ranges.ranges, null, misc.sel_dontScroll);
                     } else {
                         input.prevInput = '';
                         te.value = ranges.text.join('\n');
-                        i.selectInput(te);
+                        dom.selectInput(te);
                     }
                 }
                 if (e.type == 'cut')
                     cm.state.cutIncoming = +new Date();
             }
-            j.on(te, 'cut', prepareCopyCut);
-            j.on(te, 'copy', prepareCopyCut);
-            j.on(display.scroller, 'paste', e => {
-                if (e.eventInWidget(display, e) || j.signalDOMEvent(cm, e))
+            event.on(te, 'cut', prepareCopyCut);
+            event.on(te, 'copy', prepareCopyCut);
+            event.on(display.scroller, 'paste', e => {
+                if (widgets.eventInWidget(display, e) || event.signalDOMEvent(cm, e))
                     return;
                 if (!te.dispatchEvent) {
                     cm.state.pasteIncoming = +new Date();
@@ -10135,11 +10135,11 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
                 event.clipboardData = e.clipboardData;
                 te.dispatchEvent(event);
             });
-            j.on(display.lineSpace, 'selectstart', e => {
-                if (!e.eventInWidget(display, e))
-                    j.e_preventDefault(e);
+            event.on(display.lineSpace, 'selectstart', e => {
+                if (!widgets.eventInWidget(display, e))
+                    event.e_preventDefault(e);
             });
-            j.on(te, 'compositionstart', () => {
+            event.on(te, 'compositionstart', () => {
                 let start = cm.getCursor('from');
                 if (input.composing)
                     input.composing.range.clear();
@@ -10148,7 +10148,7 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
                     range: cm.markText(start, cm.getCursor('to'), { className: 'CodeMirror-composing' })
                 };
             });
-            j.on(te, 'compositionend', () => {
+            event.on(te, 'compositionend', () => {
                 if (input.composing) {
                     input.poll();
                     input.composing.range.clear();
@@ -10157,14 +10157,14 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             });
         }
         createField(_display) {
-            this.wrapper = c.hiddenTextarea();
+            this.wrapper = inputs.hiddenTextarea();
             this.textarea = this.wrapper.firstChild;
         }
         prepareSelection() {
             let cm = this.cm, display = cm.display, doc = cm.doc;
-            let result = b.prepareSelection(cm);
+            let result = display_selection.prepareSelection(cm);
             if (cm.options.moveInputWithCursor) {
-                let headPos = d.cursorCoords(cm, doc.sel.primary().head, 'div');
+                let headPos = position_measurement.cursorCoords(cm, doc.sel.primary().head, 'div');
                 let wrapOff = display.wrapper.getBoundingClientRect(), lineOff = display.lineDiv.getBoundingClientRect();
                 result.teTop = Math.max(0, Math.min(display.wrapper.clientHeight - 10, headPos.top + lineOff.top - wrapOff.top));
                 result.teLeft = Math.max(0, Math.min(display.wrapper.clientWidth - 10, headPos.left + lineOff.left - wrapOff.left));
@@ -10173,8 +10173,8 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
         }
         showSelection(drawn) {
             let cm = this.cm, display = cm.display;
-            i.removeChildrenAndAdd(display.cursorDiv, drawn.cursors);
-            i.removeChildrenAndAdd(display.selectionDiv, drawn.selection);
+            dom.removeChildrenAndAdd(display.cursorDiv, drawn.cursors);
+            dom.removeChildrenAndAdd(display.selectionDiv, drawn.selection);
             if (drawn.teTop != null) {
                 this.wrapper.style.top = drawn.teTop + 'px';
                 this.wrapper.style.left = drawn.teLeft + 'px';
@@ -10189,12 +10189,12 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
                 let content = cm.getSelection();
                 this.textarea.value = content;
                 if (cm.state.focused)
-                    i.selectInput(this.textarea);
-                if (h.ie && h.ie_version >= 9)
+                    dom.selectInput(this.textarea);
+                if (browser.ie && browser.ie_version >= 9)
                     this.hasSelection = content;
             } else if (!typing) {
                 this.prevInput = this.textarea.value = '';
-                if (h.ie && h.ie_version >= 9)
+                if (browser.ie && browser.ie_version >= 9)
                     this.hasSelection = null;
             }
         }
@@ -10205,7 +10205,7 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             return false;
         }
         focus() {
-            if (this.cm.options.readOnly != 'nocursor' && (!h.mobile || i.activeElt() != this.textarea)) {
+            if (this.cm.options.readOnly != 'nocursor' && (!browser.mobile || dom.activeElt() != this.textarea)) {
                 try {
                     this.textarea.focus();
                 } catch (e) {
@@ -10247,12 +10247,12 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
         }
         poll() {
             let cm = this.cm, input = this.textarea, prevInput = this.prevInput;
-            if (this.contextMenuPending || !cm.state.focused || k.hasSelection(input) && !prevInput && !this.composing || cm.isReadOnly() || cm.options.disableInput || cm.state.keySeq)
+            if (this.contextMenuPending || !cm.state.focused || feature_detection.hasSelection(input) && !prevInput && !this.composing || cm.isReadOnly() || cm.options.disableInput || cm.state.keySeq)
                 return false;
             let text = input.value;
             if (text == prevInput && !cm.somethingSelected())
                 return false;
-            if (h.ie && h.ie_version >= 9 && this.hasSelection === text || h.mac && /[\uf700-\uf7ff]/.test(text)) {
+            if (browser.ie && browser.ie_version >= 9 && this.hasSelection === text || browser.mac && /[\uf700-\uf7ff]/.test(text)) {
                 cm.display.input.reset();
                 return false;
             }
@@ -10268,8 +10268,8 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             let same = 0, l = Math.min(prevInput.length, text.length);
             while (same < l && prevInput.charCodeAt(same) == text.charCodeAt(same))
                 ++same;
-            a.runInOp(cm, () => {
-                c.applyTextInput(cm, text.slice(same), prevInput.length - same, null, this.composing ? '*compose' : null);
+            operations.runInOp(cm, () => {
+                inputs.applyTextInput(cm, text.slice(same), prevInput.length - same, null, this.composing ? '*compose' : null);
                 if (text.length > 1000 || text.indexOf('\n') > -1)
                     input.value = this.prevInput = '';
                 else
@@ -10286,7 +10286,7 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
                 this.pollingFast = false;
         }
         onKeyPress() {
-            if (h.ie && h.ie_version >= 9)
+            if (browser.ie && browser.ie_version >= 9)
                 this.hasSelection = null;
             this.fastPoll();
         }
@@ -10294,24 +10294,24 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
             let input = this, cm = input.cm, display = cm.display, te = input.textarea;
             if (input.contextMenuPending)
                 input.contextMenuPending();
-            let pos = d.posFromMouse(cm, e), scrollPos = display.scroller.scrollTop;
-            if (!pos || h.presto)
+            let pos = position_measurement.posFromMouse(cm, e), scrollPos = display.scroller.scrollTop;
+            if (!pos || browser.presto)
                 return;
             let reset = cm.options.resetSelectionOnContextMenu;
             if (reset && cm.doc.sel.contains(pos) == -1)
-                a.operation(cm, g.setSelection)(cm.doc, f.simpleSelection(pos), l.sel_dontScroll);
+                operations.operation(cm, selection_updates.setSelection)(cm.doc, model_selection.simpleSelection(pos), misc.sel_dontScroll);
             let oldCSS = te.style.cssText, oldWrapperCSS = input.wrapper.style.cssText;
             let wrapperBox = input.wrapper.offsetParent.getBoundingClientRect();
             input.wrapper.style.cssText = 'position: static';
             te.style.cssText = `position: absolute; width: 30px; height: 30px;
       top: ${ e.clientY - wrapperBox.top - 5 }px; left: ${ e.clientX - wrapperBox.left - 5 }px;
-      z-index: 1000; background: ${ h.ie ? 'rgba(255, 255, 255, .05)' : 'transparent' };
+      z-index: 1000; background: ${ browser.ie ? 'rgba(255, 255, 255, .05)' : 'transparent' };
       outline: none; border-width: 0; outline: none; overflow: hidden; opacity: .05; filter: alpha(opacity=5);`;
             let oldScrollY;
-            if (h.webkit)
+            if (browser.webkit)
                 oldScrollY = window.scrollY;
             display.input.focus();
-            if (h.webkit)
+            if (browser.webkit)
                 window.scrollTo(null, oldScrollY);
             display.input.reset();
             if (!cm.somethingSelected())
@@ -10337,14 +10337,14 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
                 input.contextMenuPending = false;
                 input.wrapper.style.cssText = oldWrapperCSS;
                 te.style.cssText = oldCSS;
-                if (h.ie && h.ie_version < 9)
+                if (browser.ie && browser.ie_version < 9)
                     display.scrollbars.setScrollTop(display.scroller.scrollTop = scrollPos);
                 if (te.selectionStart != null) {
-                    if (!h.ie || h.ie && h.ie_version < 9)
+                    if (!browser.ie || browser.ie && browser.ie_version < 9)
                         prepareSelectAllHack();
                     let i = 0, poll = () => {
                             if (display.selForContextMenu == cm.doc.sel && te.selectionStart == 0 && te.selectionEnd > 0 && input.prevInput == '\u200B') {
-                                a.operation(cm, g.selectAll)(cm);
+                                operations.operation(cm, selection_updates.selectAll)(cm);
                             } else if (i++ < 10) {
                                 display.detectingSelectAll = setTimeout(poll, 500);
                             } else {
@@ -10355,15 +10355,15 @@ define('skylark-codemirror/primitives/input/TextareaInput',[
                     display.detectingSelectAll = setTimeout(poll, 200);
                 }
             }
-            if (h.ie && h.ie_version >= 9)
+            if (browser.ie && browser.ie_version >= 9)
                 prepareSelectAllHack();
-            if (h.captureRightClick) {
-                j.e_stop(e);
+            if (browser.captureRightClick) {
+                event.e_stop(e);
                 let mouseup = () => {
-                    j.off(window, 'mouseup', mouseup);
+                    event.off(window, 'mouseup', mouseup);
                     setTimeout(rehide, 20);
                 };
-                j.on(window, 'mouseup', mouseup);
+                event.on(window, 'mouseup', mouseup);
             } else {
                 setTimeout(rehide, 50);
             }

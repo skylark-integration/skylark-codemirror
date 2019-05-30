@@ -3,7 +3,7 @@ define([
     './pos',
     './saw_special_spans',
     './utils_line'
-], function (a, b, c, d) {
+], function (misc, pos, saw_special_spans, utils_line) {
     'use strict';
     function MarkedSpan(marker, from, to) {
         this.marker = marker;
@@ -58,14 +58,14 @@ define([
     function stretchSpansOverChange(doc, change) {
         if (change.full)
             return null;
-        let oldFirst = d.isLine(doc, change.from.line) && d.getLine(doc, change.from.line).markedSpans;
-        let oldLast = d.isLine(doc, change.to.line) && d.getLine(doc, change.to.line).markedSpans;
+        let oldFirst = utils_line.isLine(doc, change.from.line) && utils_line.getLine(doc, change.from.line).markedSpans;
+        let oldLast = utils_line.isLine(doc, change.to.line) && utils_line.getLine(doc, change.to.line).markedSpans;
         if (!oldFirst && !oldLast)
             return null;
-        let startCh = change.from.ch, endCh = change.to.ch, isInsert = b.cmp(change.from, change.to) == 0;
+        let startCh = change.from.ch, endCh = change.to.ch, isInsert = pos.cmp(change.from, change.to) == 0;
         let first = markedSpansBefore(oldFirst, startCh, isInsert);
         let last = markedSpansAfter(oldLast, endCh, isInsert);
-        let sameLine = change.text.length == 1, offset = a.lst(change.text).length + (sameLine ? startCh : 0);
+        let sameLine = change.text.length == 1, offset = misc.lst(change.text).length + (sameLine ? startCh : 0);
         if (first) {
             for (let i = 0; i < first.length; ++i) {
                 let span = first[i];
@@ -130,7 +130,7 @@ define([
             if (line.markedSpans)
                 for (let i = 0; i < line.markedSpans.length; ++i) {
                     let mark = line.markedSpans[i].marker;
-                    if (mark.readOnly && (!markers || a.indexOf(markers, mark) == -1))
+                    if (mark.readOnly && (!markers || misc.indexOf(markers, mark) == -1))
                         (markers || (markers = [])).push(mark);
                 }
         });
@@ -144,12 +144,12 @@ define([
             let mk = markers[i], m = mk.find(0);
             for (let j = 0; j < parts.length; ++j) {
                 let p = parts[j];
-                if (b.cmp(p.to, m.from) < 0 || b.cmp(p.from, m.to) > 0)
+                if (pos.cmp(p.to, m.from) < 0 || pos.cmp(p.from, m.to) > 0)
                     continue;
                 let newParts = [
                         j,
                         1
-                    ], dfrom = b.cmp(p.from, m.from), dto = b.cmp(p.to, m.to);
+                    ], dfrom = pos.cmp(p.from, m.from), dto = pos.cmp(p.to, m.to);
                 if (dfrom < 0 || !mk.inclusiveLeft && !dfrom)
                     newParts.push({
                         from: p.from,
@@ -192,16 +192,16 @@ define([
         if (lenDiff != 0)
             return lenDiff;
         let aPos = a.find(), bPos = b.find();
-        let fromCmp = b.cmp(aPos.from, bPos.from) || extraLeft(a) - extraLeft(b);
+        let fromCmp = pos.cmp(aPos.from, bPos.from) || extraLeft(a) - extraLeft(b);
         if (fromCmp)
             return -fromCmp;
-        let toCmp = b.cmp(aPos.to, bPos.to) || extraRight(a) - extraRight(b);
+        let toCmp = pos.cmp(aPos.to, bPos.to) || extraRight(a) - extraRight(b);
         if (toCmp)
             return toCmp;
         return b.id - a.id;
     }
     function collapsedSpanAtSide(line, start) {
-        let sps = c.sawCollapsedSpans && line.markedSpans, found;
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans, found;
         if (sps)
             for (let sp, i = 0; i < sps.length; ++i) {
                 sp = sps[i];
@@ -217,7 +217,7 @@ define([
         return collapsedSpanAtSide(line, false);
     }
     function collapsedSpanAround(line, ch) {
-        let sps = c.sawCollapsedSpans && line.markedSpans, found;
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans, found;
         if (sps)
             for (let i = 0; i < sps.length; ++i) {
                 let sp = sps[i];
@@ -227,19 +227,19 @@ define([
         return found;
     }
     function conflictingCollapsedRange(doc, lineNo, from, to, marker) {
-        let line = d.getLine(doc, d.lineNo);
-        let sps = c.sawCollapsedSpans && line.markedSpans;
+        let line = utils_line.getLine(doc, utils_line.lineNo);
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans;
         if (sps)
             for (let i = 0; i < sps.length; ++i) {
                 let sp = sps[i];
                 if (!sp.marker.collapsed)
                     continue;
                 let found = sp.marker.find(0);
-                let fromCmp = b.cmp(found.from, from) || extraLeft(sp.marker) - extraLeft(marker);
-                let toCmp = b.cmp(found.to, to) || extraRight(sp.marker) - extraRight(marker);
+                let fromCmp = pos.cmp(found.from, from) || extraLeft(sp.marker) - extraLeft(marker);
+                let toCmp = pos.cmp(found.to, to) || extraRight(sp.marker) - extraRight(marker);
                 if (fromCmp >= 0 && toCmp <= 0 || fromCmp <= 0 && toCmp >= 0)
                     continue;
-                if (fromCmp <= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? b.cmp(found.to, from) >= 0 : b.cmp(found.to, from) > 0) || fromCmp >= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? b.cmp(found.from, to) <= 0 : b.cmp(found.from, to) < 0))
+                if (fromCmp <= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? pos.cmp(found.to, from) >= 0 : pos.cmp(found.to, from) > 0) || fromCmp >= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? pos.cmp(found.from, to) <= 0 : pos.cmp(found.from, to) < 0))
                     return true;
             }
     }
@@ -264,23 +264,23 @@ define([
         return lines;
     }
     function visualLineNo(doc, lineN) {
-        let line = d.getLine(doc, lineN), vis = visualLine(line);
+        let line = utils_line.getLine(doc, lineN), vis = visualLine(line);
         if (line == vis)
             return lineN;
-        return d.lineNo(vis);
+        return utils_line.lineNo(vis);
     }
     function visualLineEndNo(doc, lineN) {
         if (lineN > doc.lastLine())
             return lineN;
-        let line = d.getLine(doc, lineN), merged;
+        let line = utils_line.getLine(doc, lineN), merged;
         if (!lineIsHidden(doc, line))
             return lineN;
         while (merged = collapsedSpanAtEnd(line))
             line = merged.find(1, true).line;
-        return d.lineNo(line) + 1;
+        return utils_line.lineNo(line) + 1;
     }
     function lineIsHidden(doc, line) {
-        let sps = c.sawCollapsedSpans && line.markedSpans;
+        let sps = saw_special_spans.sawCollapsedSpans && line.markedSpans;
         if (sps)
             for (let sp, i = 0; i < sps.length; ++i) {
                 sp = sps[i];
@@ -348,7 +348,7 @@ define([
     }
     function findMaxLine(cm) {
         let d = cm.display, doc = cm.doc;
-        d.maxLine = d.getLine(doc, doc.first);
+        d.maxLine = utils_line.getLine(doc, doc.first);
         d.maxLineLength = lineLength(d.maxLine);
         d.maxLineChanged = true;
         doc.iter(line => {

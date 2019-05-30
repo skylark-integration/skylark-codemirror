@@ -1,4 +1,4 @@
-define(['./utils_line'], function (a) {
+define(['./utils_line'], function (utils_line) {
     'use strict';
     function Pos(line, ch, sticky = null) {
         if (!(this instanceof Pos))
@@ -30,8 +30,8 @@ define(['./utils_line'], function (a) {
             return Pos(doc.first, 0);
         let last = doc.first + doc.size - 1;
         if (pos.line > last)
-            return Pos(last, a.getLine(doc, last).text.length);
-        return clipToLen(pos, a.getLine(doc, pos.line).text.length);
+            return Pos(last, utils_line.getLine(doc, last).text.length);
+        return clipToLen(pos, utils_line.getLine(doc, pos.line).text.length);
     }
     function clipToLen(pos, linelen) {
         let ch = pos.ch;
