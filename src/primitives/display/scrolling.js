@@ -4,10 +4,19 @@ define([
     '../util/browser',
     '../util/dom',
     '../util/event',
-    './highlight_worker',
+    //'./highlight_worker',// dependence cycle 
     './line_numbers',
     './update_display'
-], function (a, b, c, d, e, f, g, h) {
+], function (
+    a, 
+    b, 
+    c, 
+    d, 
+    e, 
+//    highlight_worker, 
+    g, 
+    h
+) {
     'use strict';
     function maybeScrollWindow(cm, rect) {
         if (e.signalDOMEvent(cm, 'scrollCursorIntoView'))
@@ -151,7 +160,7 @@ define([
         setScrollTop(cm, val, true);
         if (c.gecko)
             h.updateDisplaySimple(cm);
-        f.startWorker(cm, 100);
+        cm.startWorker(cm, 100); // highlight_worker.startWorker(cm, 100);
     }
     function setScrollTop(cm, val, forceScroll) {
         val = Math.min(cm.display.scroller.scrollHeight - cm.display.scroller.clientHeight, val);

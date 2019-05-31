@@ -1,8 +1,12 @@
 define([
     '../modes',
-    './highlight_worker',
+    //'./highlight_worker',// dependence cycle 
     './view_tracking'
-], function (models, highlight_worker, view_tracking) {
+], function (
+    models, 
+    //highlight_worker, 
+    view_tracking
+) {
     'use strict';
     function loadMode(cm) {
         cm.doc.mode = models.getMode(cm.options, cm.doc.modeOption);
@@ -16,7 +20,7 @@ define([
                 line.styles = null;
         });
         cm.doc.modeFrontier = cm.doc.highlightFrontier = cm.doc.first;
-        highlight_worker.startWorker(cm, 100);
+        cm.startWorker(cm, 100); // highlight_worker.startWorker(cm, 100);
         cm.state.modeGen++;
         if (cm.curOp)
             view_tracking.regChange(cm);

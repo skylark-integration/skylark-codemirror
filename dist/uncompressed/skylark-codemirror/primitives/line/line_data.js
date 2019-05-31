@@ -8,7 +8,7 @@ define([
     './highlight',
     './spans',
     './utils_line'
-], function (a, b, c, d, e, f, g, spans, m_utils_line) {
+], function (bidi, browser, dom, events, feature_detection, misc, highlight, spans, m_utils_line) {
     'use strict';
     class Line {
         constructor(text, markedSpans, estimateHeight) {
@@ -20,7 +20,7 @@ define([
             return m_utils_line.lineNo(this);
         }
     }
-    d.eventMixin(Line);
+    events.eventMixin(Line);
     function updateLine(line, text, markedSpans, estimateHeight) {
         line.text = text;
         if (line.stateAfter)
@@ -47,9 +47,9 @@ define([
         return cache[style] || (cache[style] = style.replace(/\S+/g, 'cm-$&'));
     }
     function buildLineContent(cm, lineView) {
-        let content = c.eltP('span', null, null, b.webkit ? 'padding-right: .1px' : null);
+        let content = dom.eltP('span', null, null, browser.webkit ? 'padding-right: .1px' : null);
         let builder = {
-            pre: c.eltP('pre', [content], 'CodeMirror-line'),
+            pre: dom.eltP('pre', [content], 'CodeMirror-line'),
             content: content,
             col: 0,
             pos: 0,
@@ -62,19 +62,19 @@ define([
             let line = i ? lineView.rest[i - 1] : lineView.line, order;
             builder.pos = 0;
             builder.addToken = buildToken;
-            if (e.hasBadBidiRects(cm.display.measure) && (order = a.getOrder(line, cm.doc.direction)))
+            if (feature_detection.hasBadBidiRects(cm.display.measure) && (order = bidi.getOrder(line, cm.doc.direction)))
                 builder.addToken = buildTokenBadBidi(builder.addToken, order);
             builder.map = [];
             let allowFrontierUpdate = lineView != cm.display.externalMeasured && m_utils_line.lineNo(line);
-            insertLineContent(line, builder, g.getLineStyles(cm, line, allowFrontierUpdate));
+            insertLineContent(line, builder, highlight.getLineStyles(cm, line, allowFrontierUpdate));
             if (line.styleClasses) {
                 if (line.styleClasses.bgClass)
-                    builder.bgClass = c.joinClasses(line.styleClasses.bgClass, builder.bgClass || '');
+                    builder.bgClass = dom.joinClasses(line.styleClasses.bgClass, builder.bgClass || '');
                 if (line.styleClasses.textClass)
-                    builder.textClass = c.joinClasses(line.styleClasses.textClass, builder.textClass || '');
+                    builder.textClass = dom.joinClasses(line.styleClasses.textClass, builder.textClass || '');
             }
             if (builder.map.length == 0)
-                builder.map.push(0, 0, builder.content.appendChild(e.zeroWidthElement(cm.display.measure)));
+                builder.map.push(0, 0, builder.content.appendChild(feature_detection.zeroWidthElement(cm.display.measure)));
             if (i == 0) {
                 lineView.measure.map = builder.map;
                 lineView.measure.cache = {};
@@ -84,18 +84,18 @@ define([
                 (lineView.measure.caches || (lineView.measure.caches = [])).push({});
             }
         }
-        if (b.webkit) {
+        if (browser.webkit) {
             let last = builder.content.lastChild;
             if (/\bcm-tab\b/.test(last.className) || last.querySelector && last.querySelector('.cm-tab'))
                 builder.content.className = 'cm-tab-wrap-hack';
         }
-        d.signal(cm, 'renderLine', cm, lineView.line, builder.pre);
+        events.signal(cm, 'renderLine', cm, lineView.line, builder.pre);
         if (builder.pre.className)
-            builder.textClass = c.joinClasses(builder.pre.className, builder.textClass || '');
+            builder.textClass = dom.joinClasses(builder.pre.className, builder.textClass || '');
         return builder;
     }
     function defaultSpecialCharPlaceholder(ch) {
-        let token = c.elt('span', '\u2022', 'cm-invalidchar');
+        let token = dom.elt('span', '\u2022', 'cm-invalidchar');
         token.title = '\\u' + ch.charCodeAt(0).toString(16);
         token.setAttribute('aria-label', token.title);
         return token;
@@ -110,7 +110,7 @@ define([
             builder.col += text.length;
             content = document.createTextNode(displayText);
             builder.map.push(builder.pos, builder.pos + text.length, content);
-            if (b.ie && b.ie_version < 9)
+            if (browser.ie && browser.ie_version < 9)
                 mustWrap = true;
             builder.pos += text.length;
         } else {
@@ -122,8 +122,8 @@ define([
                 let skipped = m ? m.index - pos : text.length - pos;
                 if (skipped) {
                     let txt = document.createTextNode(displayText.slice(pos, pos + skipped));
-                    if (b.ie && b.ie_version < 9)
-                        content.appendChild(c.elt('span', [txt]));
+                    if (browser.ie && browser.ie_version < 9)
+                        content.appendChild(dom.elt('span', [txt]));
                     else
                         content.appendChild(txt);
                     builder.map.push(builder.pos, builder.pos + skipped, txt);
@@ -136,19 +136,19 @@ define([
                 let txt;
                 if (m[0] == '\t') {
                     let tabSize = builder.cm.options.tabSize, tabWidth = tabSize - builder.col % tabSize;
-                    txt = content.appendChild(c.elt('span', f.spaceStr(tabWidth), 'cm-tab'));
+                    txt = content.appendChild(dom.elt('span', misc.spaceStr(tabWidth), 'cm-tab'));
                     txt.setAttribute('role', 'presentation');
                     txt.setAttribute('cm-text', '\t');
                     builder.col += tabWidth;
                 } else if (m[0] == '\r' || m[0] == '\n') {
-                    txt = content.appendChild(c.elt('span', m[0] == '\r' ? '\u240D' : '\u2424', 'cm-invalidchar'));
+                    txt = content.appendChild(dom.elt('span', m[0] == '\r' ? '\u240D' : '\u2424', 'cm-invalidchar'));
                     txt.setAttribute('cm-text', m[0]);
                     builder.col += 1;
                 } else {
                     txt = builder.cm.options.specialCharPlaceholder(m[0]);
                     txt.setAttribute('cm-text', m[0]);
-                    if (b.ie && b.ie_version < 9)
-                        content.appendChild(c.elt('span', [txt]));
+                    if (browser.ie && browser.ie_version < 9)
+                        content.appendChild(dom.elt('span', [txt]));
                     else
                         content.appendChild(txt);
                     builder.col += 1;
@@ -164,7 +164,7 @@ define([
                 fullStyle += startStyle;
             if (endStyle)
                 fullStyle += endStyle;
-            let token = c.elt('span', [content], fullStyle, css);
+            let token = dom.elt('span', [content], fullStyle, css);
             if (attributes) {
                 for (let attr in attributes)
                     if (attributes.hasOwnProperty(attr) && attr != 'style' && attr != 'class')
@@ -309,7 +309,7 @@ define([
     function LineView(doc, line, lineN) {
         this.line = line;
         this.rest = spans.visualLineContinued(line);
-        this.size = this.rest ? m_utils_line.lineNo(f.lst(this.rest)) - lineN + 1 : 1;
+        this.size = this.rest ? m_utils_line.lineNo(misc.lst(this.rest)) - lineN + 1 : 1;
         this.node = this.text = null;
         this.hidden = spans.lineIsHidden(doc, line);
     }

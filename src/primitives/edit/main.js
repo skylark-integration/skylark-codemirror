@@ -10,22 +10,22 @@ define([
     '../modes',
     './fromTextArea',
     './legacy'
-], function (CodeMirror, b, c, d, addEditorMethods, Doc, ContentEditableInput, TextareaInput, e, f, g) {
+], function (CodeMirror, events, misc, options, addEditorMethods, Doc, ContentEditableInput, TextareaInput, modes, m_fromTextArea, legacy) {
     'use strict';
-    d.defineOptions(CodeMirror);
+    options.defineOptions(CodeMirror);
 
     addEditorMethods(CodeMirror);
 
     let dontDelegate = 'iter insert remove copy getEditor constructor'.split(' ');
     for (let prop in Doc.prototype)
-        if (Doc.prototype.hasOwnProperty(prop) && c.indexOf(dontDelegate, prop) < 0)
+        if (Doc.prototype.hasOwnProperty(prop) && misc.indexOf(dontDelegate, prop) < 0)
             CodeMirror.prototype[prop] = function (method) {
                 return function () {
                     return method.apply(this.doc, arguments);
                 };
             }(Doc.prototype[prop]);
 
-    b.eventMixin(Doc);
+    events.eventMixin(Doc);
 
     CodeMirror.inputStyles = {
         'textarea': TextareaInput,
@@ -35,10 +35,10 @@ define([
     CodeMirror.defineMode = function (name) {
         if (!CodeMirror.defaults.mode && name != 'null')
             CodeMirror.defaults.mode = name;
-        e.defineMode.apply(this, arguments);
+        modes.defineMode.apply(this, arguments);
     };
 
-    CodeMirror.defineMIME = e.defineMIME;
+    CodeMirror.defineMIME = modes.defineMIME;
 
     CodeMirror.defineMode('null', () => ({ token: stream => stream.skipToEnd() }));
 
@@ -52,9 +52,9 @@ define([
         Doc.prototype[name] = func;
     };
 
-    CodeMirror.fromTextArea = f.fromTextArea;
+    CodeMirror.fromTextArea = m_fromTextArea.fromTextArea;
 
-    g.addLegacyProps(CodeMirror);
+    legacy.addLegacyProps(CodeMirror);
     CodeMirror.version = '5.45.0';
     return { 
         CodeMirror : CodeMirror 

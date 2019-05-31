@@ -11,7 +11,20 @@ define([
     '../util/event',
     '../util/feature_detection',
     '../util/misc'
-], function (operations, display_selection, inputs, position_measurement, widgets, model_selection, selection_updates, browser, dom, event, feature_detection, misc) {
+], function (
+    operations, 
+    display_selection, 
+    inputs, 
+    position_measurement, 
+    widgets, 
+    model_selection, 
+    selection_updates, 
+    browser, 
+    dom, 
+    event, 
+    feature_detection, 
+    misc
+) {
     'use strict';
     class TextareaInput {
         constructor(cm) {
@@ -23,7 +36,7 @@ define([
             this.composing = null;
         }
         init(display) {
-            let input = this, cm = this.cm;
+            let self = this, cm = this.cm;
             this.createField(display);
             const te = this.textarea;
             display.wrapper.insertBefore(this.wrapper, display.wrapper.firstChild);
@@ -32,13 +45,13 @@ define([
             event.on(te, 'input', () => {
                 if (browser.ie && browser.ie_version >= 9 && this.hasSelection)
                     this.hasSelection = null;
-                input.poll();
+                self.poll();
             });
             event.on(te, 'paste', e => {
                 if (event.signalDOMEvent(cm, e) || inputs.handlePaste(e, cm))
                     return;
                 cm.state.pasteIncoming = +new Date();
-                input.fastPoll();
+                self.fastPoll();
             });
             function prepareCopyCut(e) {
                 if (event.signalDOMEvent(cm, e))
@@ -59,7 +72,7 @@ define([
                     if (e.type == 'cut') {
                         cm.setSelections(ranges.ranges, null, misc.sel_dontScroll);
                     } else {
-                        input.prevInput = '';
+                        self.prevInput = '';
                         te.value = ranges.text.join('\n');
                         dom.selectInput(te);
                     }
@@ -74,7 +87,7 @@ define([
                     return;
                 if (!te.dispatchEvent) {
                     cm.state.pasteIncoming = +new Date();
-                    input.focus();
+                    self.focus();
                     return;
                 }
                 const event = new Event('paste');
@@ -87,18 +100,18 @@ define([
             });
             event.on(te, 'compositionstart', () => {
                 let start = cm.getCursor('from');
-                if (input.composing)
-                    input.composing.range.clear();
-                input.composing = {
+                if (self.composing)
+                    self.composing.range.clear();
+                self.composing = {
                     start: start,
                     range: cm.markText(start, cm.getCursor('to'), { className: 'CodeMirror-composing' })
                 };
             });
             event.on(te, 'compositionend', () => {
-                if (input.composing) {
-                    input.poll();
-                    input.composing.range.clear();
-                    input.composing = null;
+                if (self.composing) {
+                    self.poll();
+                    self.composing.range.clear();
+                    self.composing = null;
                 }
             });
         }
@@ -177,19 +190,19 @@ define([
             });
         }
         fastPoll() {
-            let missed = false, input = this;
-            input.pollingFast = true;
+            let missed = false, self = this;
+            self.pollingFast = true;
             function p() {
-                let changed = input.poll();
+                let changed = self.poll();
                 if (!changed && !missed) {
                     missed = true;
-                    input.polling.set(60, p);
+                    self.polling.set(60, p);
                 } else {
-                    input.pollingFast = false;
-                    input.slowPoll();
+                    self.pollingFast = false;
+                    self.slowPoll();
                 }
             }
-            input.polling.set(20, p);
+            self.polling.set(20, p);
         }
         poll() {
             let cm = this.cm, input = this.textarea, prevInput = this.prevInput;
@@ -237,18 +250,18 @@ define([
             this.fastPoll();
         }
         onContextMenu(e) {
-            let input = this, cm = input.cm, display = cm.display, te = input.textarea;
-            if (input.contextMenuPending)
-                input.contextMenuPending();
+            let self = this, cm = self.cm, display = cm.display, te = self.textarea;
+            if (self.contextMenuPending)
+                self.contextMenuPending();
             let pos = position_measurement.posFromMouse(cm, e), scrollPos = display.scroller.scrollTop;
             if (!pos || browser.presto)
                 return;
             let reset = cm.options.resetSelectionOnContextMenu;
             if (reset && cm.doc.sel.contains(pos) == -1)
                 operations.operation(cm, selection_updates.setSelection)(cm.doc, model_selection.simpleSelection(pos), misc.sel_dontScroll);
-            let oldCSS = te.style.cssText, oldWrapperCSS = input.wrapper.style.cssText;
-            let wrapperBox = input.wrapper.offsetParent.getBoundingClientRect();
-            input.wrapper.style.cssText = 'position: static';
+            let oldCSS = te.style.cssText, oldWrapperCSS = self.wrapper.style.cssText;
+            let wrapperBox = self.wrapper.offsetParent.getBoundingClientRect();
+            self.wrapper.style.cssText = 'position: static';
             te.style.cssText = `position: absolute; width: 30px; height: 30px;
       top: ${ e.clientY - wrapperBox.top - 5 }px; left: ${ e.clientX - wrapperBox.left - 5 }px;
       z-index: 1000; background: ${ browser.ie ? 'rgba(255, 255, 255, .05)' : 'transparent' };
@@ -261,8 +274,8 @@ define([
                 window.scrollTo(null, oldScrollY);
             display.input.reset();
             if (!cm.somethingSelected())
-                te.value = input.prevInput = ' ';
-            input.contextMenuPending = rehide;
+                te.value = self.prevInput = ' ';
+            self.contextMenuPending = rehide;
             display.selForContextMenu = cm.doc.sel;
             clearTimeout(display.detectingSelectAll);
             function prepareSelectAllHack() {
@@ -271,17 +284,17 @@ define([
                     let extval = '\u200B' + (selected ? te.value : '');
                     te.value = '\u21DA';
                     te.value = extval;
-                    input.prevInput = selected ? '' : '\u200B';
+                    self.prevInput = selected ? '' : '\u200B';
                     te.selectionStart = 1;
                     te.selectionEnd = extval.length;
                     display.selForContextMenu = cm.doc.sel;
                 }
             }
             function rehide() {
-                if (input.contextMenuPending != rehide)
+                if (self.contextMenuPending != rehide)
                     return;
-                input.contextMenuPending = false;
-                input.wrapper.style.cssText = oldWrapperCSS;
+                self.contextMenuPending = false;
+                self.wrapper.style.cssText = oldWrapperCSS;
                 te.style.cssText = oldCSS;
                 if (browser.ie && browser.ie_version < 9)
                     display.scrollbars.setScrollTop(display.scroller.scrollTop = scrollPos);
@@ -289,7 +302,7 @@ define([
                     if (!browser.ie || browser.ie && browser.ie_version < 9)
                         prepareSelectAllHack();
                     let i = 0, poll = () => {
-                            if (display.selForContextMenu == cm.doc.sel && te.selectionStart == 0 && te.selectionEnd > 0 && input.prevInput == '\u200B') {
+                            if (display.selForContextMenu == cm.doc.sel && te.selectionStart == 0 && te.selectionEnd > 0 && self.prevInput == '\u200B') {
                                 operations.operation(cm, selection_updates.selectAll)(cm);
                             } else if (i++ < 10) {
                                 display.detectingSelectAll = setTimeout(poll, 500);

@@ -1,4 +1,4 @@
-define(['./util/misc'], function (a) {
+define(['./util/misc'], function (misc) {
     'use strict';
     let modes = {}, mimeModes = {};
     function defineMode(name, mode) {
@@ -16,7 +16,7 @@ define(['./util/misc'], function (a) {
             let found = mimeModes[spec.name];
             if (typeof found == 'string')
                 found = { name: found };
-            spec = a.createObj(found, spec);
+            spec = misc.createObj(found, spec);
             spec.name = found.name;
         } else if (typeof spec == 'string' && /^[\w\-]+\/[\w\-]+\+xml$/.test(spec)) {
             return resolveMode('application/xml');
@@ -55,7 +55,7 @@ define(['./util/misc'], function (a) {
     let modeExtensions = {};
     function extendMode(mode, properties) {
         let exts = modeExtensions.hasOwnProperty(mode) ? modeExtensions[mode] : modeExtensions[mode] = {};
-        a.copyObj(properties, exts);
+        misc.copyObj(properties, exts);
     }
     function copyState(mode, state) {
         if (state === true)

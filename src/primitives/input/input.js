@@ -10,7 +10,7 @@ define([
     '../util/operation_group',
     '../util/feature_detection',
     './indent'
-], function (a, b, c, d, e, f, g, h, operation_group, j, k) {
+], function (operations, scrolling, line_pos, utils_line, changes, browser, dom, misc, operation_group, feature_detection, indent) {
     'use strict';
     let lastCopied = null;
     function setLastCopied(newLastCopied) {
@@ -23,7 +23,7 @@ define([
             sel = doc.sel;
         let recent = +new Date() - 200;
         let paste = origin == 'paste' || cm.state.pasteIncoming > recent;
-        let textLines = j.splitLinesAuto(inserted), multiPaste = null;
+        let textLines = feature_detection.splitLinesAuto(inserted), multiPaste = null;
         if (paste && sel.ranges.length > 1) {
             if (lastCopied && lastCopied.text.join('\n') == inserted) {
                 if (sel.ranges.length % lastCopied.text.length == 0) {
@@ -32,7 +32,7 @@ define([
                         multiPaste.push(doc.splitLines(lastCopied.text[i]));
                 }
             } else if (textLines.length == sel.ranges.length && cm.options.pasteLinesPerSelection) {
-                multiPaste = h.map(textLines, l => [l]);
+                multiPaste = misc.map(textLines, l => [l]);
             }
         }
         let updateInput = cm.curOp.updateInput;
@@ -41,11 +41,11 @@ define([
             let from = range.from(), to = range.to();
             if (range.empty()) {
                 if (deleted && deleted > 0)
-                    from = c.Pos(from.line, from.ch - deleted);
+                    from = line_pos.Pos(from.line, from.ch - deleted);
                 else if (cm.state.overwrite && !paste)
-                    to = c.Pos(to.line, Math.min(d.getLine(doc, to.line).text.length, to.ch + h.lst(textLines).length));
+                    to = line_pos.Pos(to.line, Math.min(utils_line.getLine(doc, to.line).text.length, to.ch + misc.lst(textLines).length));
                 else if (paste && lastCopied && lastCopied.lineWise && lastCopied.text.join('\n') == inserted)
-                    from = to = c.Pos(from.line, 0);
+                    from = to = line_pos.Pos(from.line, 0);
             }
             let changeEvent = {
                 from: from,
@@ -53,12 +53,12 @@ define([
                 text: multiPaste ? multiPaste[i % multiPaste.length] : textLines,
                 origin: origin || (paste ? 'paste' : cm.state.cutIncoming > recent ? 'cut' : '+input')
             };
-            e.makeChange(cm.doc, changeEvent);
+            changes.makeChange(cm.doc, changeEvent);
             operation_group.signalLater(cm, 'inputRead', cm, changeEvent);
         }
         if (inserted && !paste)
             triggerElectric(cm, inserted);
-        b.ensureCursorVisible(cm);
+        scrolling.ensureCursorVisible(cm);
         if (cm.curOp.updateInput < 2)
             cm.curOp.updateInput = updateInput;
         cm.curOp.typing = true;
@@ -69,7 +69,7 @@ define([
         if (pasted) {
             e.preventDefault();
             if (!cm.isReadOnly() && !cm.options.disableInput)
-                a.runInOp(cm, () => applyTextInput(cm, pasted, 0, null, 'paste'));
+                operations.runInOp(cm, () => applyTextInput(cm, pasted, 0, null, 'paste'));
             return true;
         }
     }
@@ -86,12 +86,12 @@ define([
             if (mode.electricChars) {
                 for (let j = 0; j < mode.electricChars.length; j++)
                     if (inserted.indexOf(mode.electricChars.charAt(j)) > -1) {
-                        indented = k.indentLine(cm, range.head.line, 'smart');
+                        indented = indent.indentLine(cm, range.head.line, 'smart');
                         break;
                     }
             } else if (mode.electricInput) {
-                if (mode.electricInput.test(d.getLine(cm.doc, range.head.line).text.slice(0, range.head.ch)))
-                    indented = k.indentLine(cm, range.head.line, 'smart');
+                if (mode.electricInput.test(utils_line.getLine(cm.doc, range.head.line).text.slice(0, range.head.ch)))
+                    indented = indent.indentLine(cm, range.head.line, 'smart');
             }
             if (indented)
                 operation_group.signalLater(cm, 'electricInput', cm, range.head.line);
@@ -102,8 +102,8 @@ define([
         for (let i = 0; i < cm.doc.sel.ranges.length; i++) {
             let line = cm.doc.sel.ranges[i].head.line;
             let lineRange = {
-                anchor: c.Pos(line, 0),
-                head: c.Pos(line + 1, 0)
+                anchor: line_pos.Pos(line, 0),
+                head: line_pos.Pos(line + 1, 0)
             };
             ranges.push(lineRange);
             text.push(cm.getRange(lineRange.anchor, lineRange.head));
@@ -119,13 +119,13 @@ define([
         field.setAttribute('spellcheck', !!spellcheck);
     }
     function hiddenTextarea() {
-        let te = g.elt('textarea', null, null, 'position: absolute; bottom: -1em; padding: 0; width: 1px; height: 1em; outline: none');
-        let div = g.elt('div', [te], null, 'overflow: hidden; position: relative; width: 3px; height: 0px;');
-        if (f.webkit)
+        let te = dom.elt('textarea', null, null, 'position: absolute; bottom: -1em; padding: 0; width: 1px; height: 1em; outline: none');
+        let div = dom.elt('div', [te], null, 'overflow: hidden; position: relative; width: 3px; height: 0px;');
+        if (browser.webkit)
             te.style.width = '1000px';
         else
             te.setAttribute('wrap', 'off');
-        if (f.ios)
+        if (browser.ios)
             te.style.border = '1px solid black';
         disableBrowserMagic(te);
         return div;

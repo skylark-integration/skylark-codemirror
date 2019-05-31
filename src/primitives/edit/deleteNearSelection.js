@@ -4,25 +4,25 @@ define([
     '../line/pos',
     '../model/changes',
     '../util/misc'
-], function (a, b, c, d, e) {
+], function (operations, scrolling, line_pos, changes, misc) {
     'use strict';
     function deleteNearSelection(cm, compute) {
         let ranges = cm.doc.sel.ranges, kill = [];
         for (let i = 0; i < ranges.length; i++) {
             let toKill = compute(ranges[i]);
-            while (kill.length && c.cmp(toKill.from, e.lst(kill).to) <= 0) {
+            while (kill.length && line_pos.cmp(toKill.from, misc.lst(kill).to) <= 0) {
                 let replaced = kill.pop();
-                if (c.cmp(replaced.from, toKill.from) < 0) {
+                if (line_pos.cmp(replaced.from, toKill.from) < 0) {
                     toKill.from = replaced.from;
                     break;
                 }
             }
             kill.push(toKill);
         }
-        a.runInOp(cm, () => {
+        operations.runInOp(cm, () => {
             for (let i = kill.length - 1; i >= 0; i--)
-                d.replaceRange(cm.doc, '', kill[i].from, kill[i].to, '+delete');
-            b.ensureCursorVisible(cm);
+                changes.replaceRange(cm.doc, '', kill[i].from, kill[i].to, '+delete');
+            scrolling.ensureCursorVisible(cm);
         });
     }
     return { deleteNearSelection: deleteNearSelection };

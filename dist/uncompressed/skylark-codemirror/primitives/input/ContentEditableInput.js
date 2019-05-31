@@ -14,13 +14,13 @@ define([
     '../util/dom',
     '../util/event',
     '../util/misc'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) {
+], function (operations, display_selection, view_tracking, inputs, line_pos, utils_line, position_measurement, changes, selection, selection_updates, bidi, browser, dom, events, misc) {
     'use strict';
     class ContentEditableInput {
         constructor(cm) {
             this.cm = cm;
             this.lastAnchorNode = this.lastAnchorOffset = this.lastFocusNode = this.lastFocusOffset = null;
-            this.polling = new o.Delayed();
+            this.polling = new misc.Delayed();
             this.composing = null;
             this.gracePeriod = false;
             this.readDOMTimeout = null;
@@ -28,43 +28,43 @@ define([
         init(display) {
             let input = this, cm = input.cm;
             let div = input.div = display.lineDiv;
-            d.disableBrowserMagic(div, cm.options.spellcheck, cm.options.autocorrect, cm.options.autocapitalize);
-            n.on(div, 'paste', e => {
-                if (n.signalDOMEvent(cm, e) || d.handlePaste(e, cm))
+            inputs.disableBrowserMagic(div, cm.options.spellcheck, cm.options.autocorrect, cm.options.autocapitalize);
+            events.on(div, 'paste', e => {
+                if (events.signalDOMEvent(cm, e) || inputs.handlePaste(e, cm))
                     return;
-                if (l.ie_version <= 11)
-                    setTimeout(a.operation(cm, () => this.updateFromDOM()), 20);
+                if (browser.ie_version <= 11)
+                    setTimeout(operations.operation(cm, () => this.updateFromDOM()), 20);
             });
-            n.on(div, 'compositionstart', e => {
+            events.on(div, 'compositionstart', e => {
                 this.composing = {
                     data: e.data,
                     done: false
                 };
             });
-            n.on(div, 'compositionupdate', e => {
+            events.on(div, 'compositionupdate', e => {
                 if (!this.composing)
                     this.composing = {
                         data: e.data,
                         done: false
                     };
             });
-            n.on(div, 'compositionend', e => {
+            events.on(div, 'compositionend', e => {
                 if (this.composing) {
                     if (e.data != this.composing.data)
                         this.readFromDOMSoon();
                     this.composing.done = true;
                 }
             });
-            n.on(div, 'touchstart', () => input.forceCompositionEnd());
-            n.on(div, 'input', () => {
+            events.on(div, 'touchstart', () => input.forceCompositionEnd());
+            events.on(div, 'input', () => {
                 if (!this.composing)
                     this.readFromDOMSoon();
             });
             function onCopyCut(e) {
-                if (n.signalDOMEvent(cm, e))
+                if (events.signalDOMEvent(cm, e))
                     return;
                 if (cm.somethingSelected()) {
-                    d.setLastCopied({
+                    inputs.setLastCopied({
                         lineWise: false,
                         text: cm.getSelections()
                     });
@@ -73,32 +73,32 @@ define([
                 } else if (!cm.options.lineWiseCopyCut) {
                     return;
                 } else {
-                    let ranges = d.copyableRanges(cm);
-                    d.setLastCopied({
+                    let ranges = inputs.copyableRanges(cm);
+                    inputs.setLastCopied({
                         lineWise: true,
                         text: ranges.text
                     });
                     if (e.type == 'cut') {
                         cm.operation(() => {
-                            cm.setSelections(ranges.ranges, 0, o.sel_dontScroll);
+                            cm.setSelections(ranges.ranges, 0, misc.sel_dontScroll);
                             cm.replaceSelection('', null, 'cut');
                         });
                     }
                 }
                 if (e.clipboardData) {
                     e.clipboardData.clearData();
-                    let content = d.lastCopied.text.join('\n');
+                    let content = inputs.lastCopied.text.join('\n');
                     e.clipboardData.setData('Text', content);
                     if (e.clipboardData.getData('Text') == content) {
                         e.preventDefault();
                         return;
                     }
                 }
-                let kludge = d.hiddenTextarea(), te = kludge.firstChild;
+                let kludge = inputs.hiddenTextarea(), te = kludge.firstChild;
                 cm.display.lineSpace.insertBefore(kludge, cm.display.lineSpace.firstChild);
-                te.value = d.lastCopied.text.join('\n');
+                te.value = inputs.lastCopied.text.join('\n');
                 let hadFocus = document.activeElement;
-                m.selectInput(te);
+                dom.selectInput(te);
                 setTimeout(() => {
                     cm.display.lineSpace.removeChild(kludge);
                     hadFocus.focus();
@@ -106,11 +106,11 @@ define([
                         input.showPrimarySelection();
                 }, 50);
             }
-            n.on(div, 'copy', onCopyCut);
-            n.on(div, 'cut', onCopyCut);
+            events.on(div, 'copy', onCopyCut);
+            events.on(div, 'cut', onCopyCut);
         }
         prepareSelection() {
-            let result = b.prepareSelection(this.cm, false);
+            let result = display_selection.prepareSelection(this.cm, false);
             result.focus = this.cm.state.focused;
             return result;
         }
@@ -133,7 +133,7 @@ define([
             }
             let curAnchor = domToPos(cm, sel.anchorNode, sel.anchorOffset);
             let curFocus = domToPos(cm, sel.focusNode, sel.focusOffset);
-            if (curAnchor && !curAnchor.bad && curFocus && !curFocus.bad && e.cmp(e.minPos(curAnchor, curFocus), from) == 0 && e.cmp(e.maxPos(curAnchor, curFocus), to) == 0)
+            if (curAnchor && !curAnchor.bad && curFocus && !curFocus.bad && line_pos.cmp(line_pos.minPos(curAnchor, curFocus), from) == 0 && line_pos.cmp(line_pos.maxPos(curAnchor, curFocus), to) == 0)
                 return;
             let view = cm.display.view;
             let start = from.line >= cm.display.viewFrom && posToDOM(cm, from) || {
@@ -155,11 +155,11 @@ define([
             }
             let old = sel.rangeCount && sel.getRangeAt(0), rng;
             try {
-                rng = m.range(start.node, start.offset, end.offset, end.node);
+                rng = dom.range(start.node, start.offset, end.offset, end.node);
             } catch (e) {
             }
             if (rng) {
-                if (!l.gecko && cm.state.focused) {
+                if (!browser.gecko && cm.state.focused) {
                     sel.collapse(start.node, start.offset);
                     if (!rng.collapsed) {
                         sel.removeAllRanges();
@@ -171,7 +171,7 @@ define([
                 }
                 if (old && sel.anchorNode == null)
                     sel.addRange(old);
-                else if (l.gecko)
+                else if (browser.gecko)
                     this.startGracePeriod();
             }
             this.rememberSelection();
@@ -185,8 +185,8 @@ define([
             }, 20);
         }
         showMultipleSelections(info) {
-            m.removeChildrenAndAdd(this.cm.display.cursorDiv, info.cursors);
-            m.removeChildrenAndAdd(this.cm.display.selectionDiv, info.selection);
+            dom.removeChildrenAndAdd(this.cm.display.cursorDiv, info.cursors);
+            dom.removeChildrenAndAdd(this.cm.display.selectionDiv, info.selection);
         }
         rememberSelection() {
             let sel = this.getSelection();
@@ -200,7 +200,7 @@ define([
             if (!sel.rangeCount)
                 return false;
             let node = sel.getRangeAt(0).commonAncestorContainer;
-            return m.contains(this.div, node);
+            return dom.contains(this.div, node);
         }
         focus() {
             if (this.cm.options.readOnly != 'nocursor') {
@@ -223,7 +223,7 @@ define([
             if (this.selectionInEditor())
                 this.pollSelection();
             else
-                a.runInOp(this.cm, () => input.cm.curOp.selectionChanged = true);
+                operations.runInOp(this.cm, () => input.cm.curOp.selectionChanged = true);
             function poll() {
                 if (input.cm.state.focused) {
                     input.pollSelection();
@@ -240,7 +240,7 @@ define([
             if (this.readDOMTimeout != null || this.gracePeriod || !this.selectionChanged())
                 return;
             let sel = this.getSelection(), cm = this.cm;
-            if (l.android && l.chrome && this.cm.options.gutters.length && isInGutter(sel.anchorNode)) {
+            if (browser.android && browser.chrome && this.cm.options.gutters.length && isInGutter(sel.anchorNode)) {
                 this.cm.triggerOnKeyDown({
                     type: 'keydown',
                     keyCode: 8,
@@ -256,8 +256,8 @@ define([
             let anchor = domToPos(cm, sel.anchorNode, sel.anchorOffset);
             let head = domToPos(cm, sel.focusNode, sel.focusOffset);
             if (anchor && head)
-                a.runInOp(cm, () => {
-                    j.setSelection(cm.doc, i.simpleSelection(anchor, head), o.sel_dontScroll);
+                operations.runInOp(cm, () => {
+                    selection_updates.setSelection(cm.doc, selection.simpleSelection(anchor, head), misc.sel_dontScroll);
                     if (anchor.bad || head.bad)
                         cm.curOp.selectionChanged = true;
                 });
@@ -270,34 +270,34 @@ define([
             let cm = this.cm, display = cm.display, sel = cm.doc.sel.primary();
             let from = sel.from(), to = sel.to();
             if (from.ch == 0 && from.line > cm.firstLine())
-                from = e.Pos(from.line - 1, f.getLine(cm.doc, from.line - 1).length);
-            if (to.ch == f.getLine(cm.doc, to.line).text.length && to.line < cm.lastLine())
-                to = e.Pos(to.line + 1, 0);
+                from = line_pos.Pos(from.line - 1, utils_line.getLine(cm.doc, from.line - 1).length);
+            if (to.ch == utils_line.getLine(cm.doc, to.line).text.length && to.line < cm.lastLine())
+                to = line_pos.Pos(to.line + 1, 0);
             if (from.line < display.viewFrom || to.line > display.viewTo - 1)
                 return false;
             let fromIndex, fromLine, fromNode;
-            if (from.line == display.viewFrom || (fromIndex = g.findViewIndex(cm, from.line)) == 0) {
-                fromLine = f.lineNo(display.view[0].line);
+            if (from.line == display.viewFrom || (fromIndex = position_measurement.findViewIndex(cm, from.line)) == 0) {
+                fromLine = utils_line.lineNo(display.view[0].line);
                 fromNode = display.view[0].node;
             } else {
-                fromLine = f.lineNo(display.view[fromIndex].line);
+                fromLine = utils_line.lineNo(display.view[fromIndex].line);
                 fromNode = display.view[fromIndex - 1].node.nextSibling;
             }
-            let toIndex = g.findViewIndex(cm, to.line);
+            let toIndex = position_measurement.findViewIndex(cm, to.line);
             let toLine, toNode;
             if (toIndex == display.view.length - 1) {
                 toLine = display.viewTo - 1;
                 toNode = display.lineDiv.lastChild;
             } else {
-                toLine = f.lineNo(display.view[toIndex + 1].line) - 1;
+                toLine = utils_line.lineNo(display.view[toIndex + 1].line) - 1;
                 toNode = display.view[toIndex + 1].node.previousSibling;
             }
             if (!fromNode)
                 return false;
             let newText = cm.doc.splitLines(domTextBetween(cm, fromNode, toNode, fromLine, toLine));
-            let oldText = f.getBetween(cm.doc, e.Pos(fromLine, 0), e.Pos(toLine, f.getLine(cm.doc, toLine).text.length));
+            let oldText = utils_line.getBetween(cm.doc, line_pos.Pos(fromLine, 0), line_pos.Pos(toLine, utils_line.getLine(cm.doc, toLine).text.length));
             while (newText.length > 1 && oldText.length > 1) {
-                if (o.lst(newText) == o.lst(oldText)) {
+                if (misc.lst(newText) == misc.lst(oldText)) {
                     newText.pop();
                     oldText.pop();
                     toLine--;
@@ -312,7 +312,7 @@ define([
             let newTop = newText[0], oldTop = oldText[0], maxCutFront = Math.min(newTop.length, oldTop.length);
             while (cutFront < maxCutFront && newTop.charCodeAt(cutFront) == oldTop.charCodeAt(cutFront))
                 ++cutFront;
-            let newBot = o.lst(newText), oldBot = o.lst(oldText);
+            let newBot = misc.lst(newText), oldBot = misc.lst(oldText);
             let maxCutEnd = Math.min(newBot.length - (newText.length == 1 ? cutFront : 0), oldBot.length - (oldText.length == 1 ? cutFront : 0));
             while (cutEnd < maxCutEnd && newBot.charCodeAt(newBot.length - cutEnd - 1) == oldBot.charCodeAt(oldBot.length - cutEnd - 1))
                 ++cutEnd;
@@ -324,10 +324,10 @@ define([
             }
             newText[newText.length - 1] = newBot.slice(0, newBot.length - cutEnd).replace(/^\u200b+/, '');
             newText[0] = newText[0].slice(cutFront).replace(/\u200b+$/, '');
-            let chFrom = e.Pos(fromLine, cutFront);
-            let chTo = e.Pos(toLine, oldText.length ? o.lst(oldText).length - cutEnd : 0);
-            if (newText.length > 1 || newText[0] || e.cmp(chFrom, chTo)) {
-                h.replaceRange(cm.doc, newText, chFrom, chTo, '+input');
+            let chFrom = line_pos.Pos(fromLine, cutFront);
+            let chTo = line_pos.Pos(toLine, oldText.length ? misc.lst(oldText).length - cutEnd : 0);
+            if (newText.length > 1 || newText[0] || line_pos.cmp(chFrom, chTo)) {
+                changes.replaceRange(cm.doc, newText, chFrom, chTo, '+input');
                 return true;
             }
         }
@@ -362,7 +362,7 @@ define([
         }
         updateFromDOM() {
             if (this.cm.isReadOnly() || !this.pollContent())
-                a.runInOp(this.cm, () => c.regChange(this.cm));
+                operations.runInOp(this.cm, () => view_tracking.regChange(this.cm));
         }
         setUneditable(node) {
             node.contentEditable = 'false';
@@ -372,7 +372,7 @@ define([
                 return;
             e.preventDefault();
             if (!this.cm.isReadOnly())
-                a.operation(this.cm, d.applyTextInput)(this.cm, String.fromCharCode(e.charCode == null ? e.keyCode : e.charCode), 0);
+                operations.operation(this.cm, inputs.applyTextInput)(this.cm, String.fromCharCode(e.charCode == null ? e.keyCode : e.charCode), 0);
         }
         readOnlyChanged(val) {
             this.div.contentEditable = String(val != 'nocursor');
@@ -384,17 +384,17 @@ define([
     };
     ContentEditableInput.prototype.needsContentAttribute = true;
     function posToDOM(cm, pos) {
-        let view = g.findViewForLine(cm, pos.line);
+        let view = position_measurement.findViewForLine(cm, pos.line);
         if (!view || view.hidden)
             return null;
-        let line = f.getLine(cm.doc, pos.line);
-        let info = g.mapFromLineView(view, line, pos.line);
-        let order = k.getOrder(line, cm.doc.direction), side = 'left';
+        let line = utils_line.getLine(cm.doc, pos.line);
+        let info = position_measurement.mapFromLineView(view, line, pos.line);
+        let order = bidi.getOrder(line, cm.doc.direction), side = 'left';
         if (order) {
-            let partPos = k.getBidiPartAt(order, pos.ch);
+            let partPos = bidi.getBidiPartAt(order, pos.ch);
             side = partPos % 2 ? 'right' : 'left';
         }
-        let result = g.nodeAndOffsetInLineMap(info.map, pos.ch, side);
+        let result = position_measurement.nodeAndOffsetInLineMap(info.map, pos.ch, side);
         result.offset = result.collapse == 'right' ? result.end : result.start;
         return result;
     }
@@ -437,9 +437,9 @@ define([
                 }
                 let markerID = node.getAttribute('cm-marker'), range;
                 if (markerID) {
-                    let found = cm.findMarks(e.Pos(fromLine, 0), e.Pos(toLine + 1, 0), recognizeMarker(+markerID));
+                    let found = cm.findMarks(line_pos.Pos(fromLine, 0), line_pos.Pos(toLine + 1, 0), recognizeMarker(+markerID));
                     if (found.length && (range = found[0].find(0)))
-                        addText(f.getBetween(cm.doc, range.from, range.to).join(lineSep));
+                        addText(utils_line.getBetween(cm.doc, range.from, range.to).join(lineSep));
                     return;
                 }
                 if (node.getAttribute('contenteditable') == 'false')
@@ -473,7 +473,7 @@ define([
         if (node == cm.display.lineDiv) {
             lineNode = cm.display.lineDiv.childNodes[offset];
             if (!lineNode)
-                return badPos(cm.clipPos(e.Pos(cm.display.viewTo - 1)), true);
+                return badPos(cm.clipPos(line_pos.Pos(cm.display.viewTo - 1)), true);
             node = null;
             offset = 0;
         } else {
@@ -492,15 +492,15 @@ define([
     }
     function locateNodeInLineView(lineView, node, offset) {
         let wrapper = lineView.text.firstChild, bad = false;
-        if (!node || !m.contains(wrapper, node))
-            return badPos(e.Pos(f.lineNo(lineView.line), 0), true);
+        if (!node || !dom.contains(wrapper, node))
+            return badPos(line_pos.Pos(utils_line.lineNo(lineView.line), 0), true);
         if (node == wrapper) {
             bad = true;
             node = wrapper.childNodes[offset];
             offset = 0;
             if (!node) {
-                let line = lineView.rest ? o.lst(lineView.rest) : lineView.line;
-                return badPos(e.Pos(f.lineNo(line), line.text.length), bad);
+                let line = lineView.rest ? misc.lst(lineView.rest) : lineView.line;
+                return badPos(line_pos.Pos(utils_line.lineNo(line), line.text.length), bad);
             }
         }
         let textNode = node.nodeType == 3 ? node : null, topNode = node;
@@ -518,11 +518,11 @@ define([
                 for (let j = 0; j < map.length; j += 3) {
                     let curNode = map[j + 2];
                     if (curNode == textNode || curNode == topNode) {
-                        let line = f.lineNo(i < 0 ? lineView.line : lineView.rest[i]);
+                        let line = utils_line.lineNo(i < 0 ? lineView.line : lineView.rest[i]);
                         let ch = map[j] + offset;
                         if (offset < 0 || curNode != textNode)
                             ch = map[j + (offset ? 1 : 0)];
-                        return e.Pos(line, ch);
+                        return line_pos.Pos(line, ch);
                     }
                 }
             }
@@ -533,14 +533,14 @@ define([
         for (let after = topNode.nextSibling, dist = textNode ? textNode.nodeValue.length - offset : 0; after; after = after.nextSibling) {
             found = find(after, after.firstChild, 0);
             if (found)
-                return badPos(e.Pos(found.line, found.ch - dist), bad);
+                return badPos(line_pos.Pos(found.line, found.ch - dist), bad);
             else
                 dist += after.textContent.length;
         }
         for (let before = topNode.previousSibling, dist = offset; before; before = before.previousSibling) {
             found = find(before, before.firstChild, -1);
             if (found)
-                return badPos(e.Pos(found.line, found.ch + dist), bad);
+                return badPos(line_pos.Pos(found.line, found.ch + dist), bad);
             else
                 dist += before.textContent.length;
         }

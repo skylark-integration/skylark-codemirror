@@ -26,8 +26,121 @@ define([
     '../display/highlight_worker',
     '../display/line_numbers',
     '../display/scrollbars'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x,m_highlight_worker,m_line_numbers,m_scrollbars) {
+], function (
+    m_deleteNearSelection, 
+    m_commands, 
+    m_document_data, 
+    dom, 
+    events, 
+    highlight, 
+    indent, 
+    m_input, 
+    key_events, 
+    mouse_events, 
+    keymap, 
+    movement, 
+    operations, 
+    line_pos, 
+    position_measurement, 
+    selection, 
+    selection_updates, 
+    scrolling, 
+    line_spans, 
+    update_display, 
+    misc, 
+    operation_group, 
+    utils_line, 
+    view_tracking,
+    m_highlight_worker,
+    m_line_numbers,
+    m_scrollbars
+) {
     'use strict';
+
+    function findPosH(doc, pos, dir, unit, visually) {
+        let oldPos = pos;
+        let origDir = dir;
+        let lineObj = utils_line.getLine(doc, pos.line);
+        function findNextLine() {
+            let l = pos.line + dir;
+            if (l < doc.first || l >= doc.first + doc.size)
+                return false;
+            pos = new line_pos.Pos(l, pos.ch, pos.sticky);
+            return lineObj = utils_line.getLine(doc, l);
+        }
+        function moveOnce(boundToLine) {
+            let next;
+            if (visually) {
+                next = movement.moveVisually(doc.cm, lineObj, pos, dir);
+            } else {
+                next = movement.moveLogically(lineObj, pos, dir);
+            }
+            if (next == null) {
+                if (!boundToLine && findNextLine())
+                    pos = movement.endOfLine(visually, doc.cm, lineObj, pos.line, dir);
+                else
+                    return false;
+            } else {
+                pos = next;
+            }
+            return true;
+        }
+        if (unit == 'char') {
+            moveOnce();
+        } else if (unit == 'column') {
+            moveOnce(true);
+        } else if (unit == 'word' || unit == 'group') {
+            let sawType = null, group = unit == 'group';
+            let helper = doc.cm && doc.cm.getHelper(pos, 'wordChars');
+            for (let first = true;; first = false) {
+                if (dir < 0 && !moveOnce(!first))
+                    break;
+                let cur = lineObj.text.charAt(pos.ch) || '\n';
+                let type = misc.isWordChar(cur, helper) ? 'w' : group && cur == '\n' ? 'n' : !group || /\s/.test(cur) ? null : 'p';
+                if (group && !first && !type)
+                    type = 's';
+                if (sawType && sawType != type) {
+                    if (dir < 0) {
+                        dir = 1;
+                        moveOnce();
+                        pos.sticky = 'after';
+                    }
+                    break;
+                }
+                if (type)
+                    sawType = type;
+                if (dir > 0 && !moveOnce(!first))
+                    break;
+            }
+        }
+        let result = selection_updates.skipAtomic(doc, pos, oldPos, origDir, true);
+        if (line_pos.equalCursorPos(oldPos, result))
+            result.hitSide = true;
+        return result;
+    }
+    function findPosV(cm, pos, dir, unit) {
+        let doc = cm.doc, x = pos.left, y;
+        if (unit == 'page') {
+            let pageSize = Math.min(cm.display.wrapper.clientHeight, window.innerHeight || document.documentElement.clientHeight);
+            let moveAmount = Math.max(pageSize - 0.5 * position_measurement.textHeight(cm.display), 3);
+            y = (dir > 0 ? pos.bottom : pos.top) + dir * moveAmount;
+        } else if (unit == 'line') {
+            y = dir > 0 ? pos.bottom + 3 : pos.top - 3;
+        }
+        let target;
+        for (;;) {
+            target = position_measurement.coordsChar(cm, x, y);
+            if (!target.outside)
+                break;
+            if (dir < 0 ? y <= 0 : y >= doc.height) {
+                target.hitSide = true;
+                break;
+            }
+            y += dir * 5;
+        }
+        return target;
+    }
+        
     return function (CodeMirror) {
         let optionHandlers = CodeMirror.optionHandlers;
         let helpers = CodeMirror.helpers = {};
@@ -43,8 +156,8 @@ define([
                     return;
                 options[option] = value;
                 if (optionHandlers.hasOwnProperty(option))
-                    m.operation(this, optionHandlers[option])(this, value, old);
-                e.signal(this, 'optionChange', this, option);
+                    operations.operation(this, optionHandlers[option])(this, value, old);
+                events.signal(this, 'optionChange', this, option);
             },
             getOption: function (option) {
                 return this.options[option];
@@ -53,7 +166,7 @@ define([
                 return this.doc;
             },
             addKeyMap: function (map, bottom) {
-                this.state.keyMaps[bottom ? 'push' : 'unshift'](k.getKeyMap(map));
+                this.state.keyMaps[bottom ? 'push' : 'unshift'](keymap.getKeyMap(map));
             },
             removeKeyMap: function (map) {
                 let maps = this.state.keyMaps;
@@ -63,42 +176,42 @@ define([
                         return true;
                     }
             },
-            addOverlay: m.methodOp(function (spec, options) {
+            addOverlay: operations.methodOp(function (spec, options) {
                 let mode = spec.token ? spec : CodeMirror.getMode(this.options, spec);
                 if (mode.startState)
                     throw new Error('Overlays may not be stateful.');
-                u.insertSorted(this.state.overlays, {
+                misc.insertSorted(this.state.overlays, {
                     mode: mode,
                     modeSpec: spec,
                     opaque: options && options.opaque,
                     priority: options && options.priority || 0
                 }, overlay => overlay.priority);
                 this.state.modeGen++;
-                x.regChange(this);
+                view_tracking.regChange(this);
             }),
-            removeOverlay: m.methodOp(function (spec) {
+            removeOverlay: operations.methodOp(function (spec) {
                 let overlays = this.state.overlays;
                 for (let i = 0; i < overlays.length; ++i) {
                     let cur = overlays[i].modeSpec;
                     if (cur == spec || typeof spec == 'string' && cur.name == spec) {
                         overlays.splice(i, 1);
                         this.state.modeGen++;
-                        x.regChange(this);
+                        view_tracking.regChange(this);
                         return;
                     }
                 }
             }),
-            indentLine: m.methodOp(function (n, dir, aggressive) {
+            indentLine: operations.methodOp(function (n, dir, aggressive) {
                 if (typeof dir != 'string' && typeof dir != 'number') {
                     if (dir == null)
                         dir = this.options.smartIndent ? 'smart' : 'prev';
                     else
                         dir = dir ? 'add' : 'subtract';
                 }
-                if (w.isLine(this.doc, n))
-                    g.indentLine(this, n, dir, aggressive);
+                if (utils_line.isLine(this.doc, n))
+                    indent.indentLine(this, n, dir, aggressive);
             }),
-            indentSelection: m.methodOp(function (how) {
+            indentSelection: operations.methodOp(function (how) {
                 let ranges = this.doc.sel.ranges, end = -1;
                 for (let i = 0; i < ranges.length; i++) {
                     let range = ranges[i];
@@ -107,27 +220,27 @@ define([
                         let start = Math.max(end, from.line);
                         end = Math.min(this.lastLine(), to.line - (to.ch ? 0 : 1)) + 1;
                         for (let j = start; j < end; ++j)
-                            g.indentLine(this, j, how);
+                            indent.indentLine(this, j, how);
                         let newRanges = this.doc.sel.ranges;
                         if (from.ch == 0 && ranges.length == newRanges.length && newRanges[i].from().ch > 0)
-                            q.replaceOneSelection(this.doc, i, new p.Range(from, newRanges[i].to()), u.sel_dontScroll);
+                            selection_updates.replaceOneSelection(this.doc, i, new selection.Range(from, newRanges[i].to()), misc.sel_dontScroll);
                     } else if (range.head.line > end) {
-                        g.indentLine(this, range.head.line, how, true);
+                        indent.indentLine(this, range.head.line, how, true);
                         end = range.head.line;
                         if (i == this.doc.sel.primIndex)
-                            r.ensureCursorVisible(this);
+                            scrolling.ensureCursorVisible(this);
                     }
                 }
             }),
             getTokenAt: function (pos, precise) {
-                return f.takeToken(this, pos, precise);
+                return highlight.takeToken(this, pos, precise);
             },
             getLineTokens: function (line, precise) {
-                return f.takeToken(this, n.Pos(line), precise, true);
+                return highlight.takeToken(this, line_pos.Pos(line), precise, true);
             },
             getTokenTypeAt: function (pos) {
-                pos = n.clipPos(this.doc, pos);
-                let styles = f.getLineStyles(this, w.getLine(this.doc, pos.line));
+                pos = line_pos.clipPos(this.doc, pos);
+                let styles = highlight.getLineStyles(this, utils_line.getLine(this.doc, pos.line));
                 let before = 0, after = (styles.length - 1) / 2, ch = pos.ch;
                 let type;
                 if (ch == 0)
@@ -177,39 +290,39 @@ define([
                 }
                 for (let i = 0; i < help._global.length; i++) {
                     let cur = help._global[i];
-                    if (cur.pred(mode, this) && u.indexOf(found, cur.val) == -1)
+                    if (cur.pred(mode, this) && misc.indexOf(found, cur.val) == -1)
                         found.push(cur.val);
                 }
                 return found;
             },
             getStateAfter: function (line, precise) {
                 let doc = this.doc;
-                line = n.clipLine(doc, line == null ? doc.first + doc.size - 1 : line);
-                return f.getContextBefore(this, line + 1, precise).state;
+                line = line_pos.clipLine(doc, line == null ? doc.first + doc.size - 1 : line);
+                return highlight.getContextBefore(this, line + 1, precise).state;
             },
             cursorCoords: function (start, mode) {
                 let pos, range = this.doc.sel.primary();
                 if (start == null)
                     pos = range.head;
                 else if (typeof start == 'object')
-                    pos = n.clipPos(this.doc, start);
+                    pos = line_pos.clipPos(this.doc, start);
                 else
                     pos = start ? range.from() : range.to();
-                return o.cursorCoords(this, pos, mode || 'page');
+                return position_measurement.cursorCoords(this, pos, mode || 'page');
             },
             charCoords: function (pos, mode) {
-                return o.charCoords(this, n.clipPos(this.doc, pos), mode || 'page');
+                return position_measurement.charCoords(this, line_pos.clipPos(this.doc, pos), mode || 'page');
             },
             coordsChar: function (coords, mode) {
-                coords = o.fromCoordSystem(this, coords, mode || 'page');
-                return o.coordsChar(this, coords.left, coords.top);
+                coords = position_measurement.fromCoordSystem(this, coords, mode || 'page');
+                return position_measurement.coordsChar(this, coords.left, coords.top);
             },
             lineAtHeight: function (height, mode) {
-                height = o.fromCoordSystem(this, {
+                height = position_measurement.fromCoordSystem(this, {
                     top: height,
                     left: 0
                 }, mode || 'page').top;
-                return w.lineAtHeight(this.doc, height + this.display.viewOffset);
+                return utils_line.lineAtHeight(this.doc, height + this.display.viewOffset);
             },
             heightAtLine: function (line, mode, includeWidgets) {
                 let end = false, lineObj;
@@ -221,20 +334,20 @@ define([
                         line = last;
                         end = true;
                     }
-                    lineObj = w.getLine(this.doc, line);
+                    lineObj = utils_line.getLine(this.doc, line);
                 } else {
                     lineObj = line;
                 }
-                return o.intoCoordSystem(this, lineObj, {
+                return position_measurement.intoCoordSystem(this, lineObj, {
                     top: 0,
                     left: 0
-                }, mode || 'page', includeWidgets || end).top + (end ? this.doc.height - s.heightAtLine(lineObj) : 0);
+                }, mode || 'page', includeWidgets || end).top + (end ? this.doc.height - line_spans.heightAtLine(lineObj) : 0);
             },
             defaultTextHeight: function () {
-                return o.textHeight(this.display);
+                return position_measurement.textHeight(this.display);
             },
             defaultCharWidth: function () {
-                return o.charWidth(this.display);
+                return position_measurement.charWidth(this.display);
             },
             getViewport: function () {
                 return {
@@ -244,7 +357,7 @@ define([
             },
             addWidget: function (pos, node, scroll, vert, horiz) {
                 let display = this.display;
-                pos = o.cursorCoords(this, n.clipPos(this.doc, pos));
+                pos = position_measurement.cursorCoords(this, line_pos.clipPos(this.doc, pos));
                 let top = pos.bottom, left = pos.left;
                 node.style.position = 'absolute';
                 node.setAttribute('cm-ignore-events', 'true');
@@ -274,23 +387,23 @@ define([
                     node.style.left = left + 'px';
                 }
                 if (scroll)
-                    r.scrollIntoView(this, {
+                    scrolling.scrollIntoView(this, {
                         left,
                         top,
                         right: left + node.offsetWidth,
                         bottom: top + node.offsetHeight
                     });
             },
-            triggerOnKeyDown: m.methodOp(i.onKeyDown),
-            triggerOnKeyPress: m.methodOp(i.onKeyPress),
-            triggerOnKeyUp: i.onKeyUp,
-            triggerOnMouseDown: m.methodOp(j.onMouseDown),
+            triggerOnKeyDown: operations.methodOp(key_events.onKeyDown),
+            triggerOnKeyPress: operations.methodOp(key_events.onKeyPress),
+            triggerOnKeyUp: key_events.onKeyUp,
+            triggerOnMouseDown: operations.methodOp(mouse_events.onMouseDown),
             execCommand: function (cmd) {
-                if (b.commands.hasOwnProperty(cmd))
-                    return b.commands[cmd].call(null, this);
+                if (m_commands.commands.hasOwnProperty(cmd))
+                    return m_commands.commands[cmd].call(null, this);
             },
-            triggerElectric: m.methodOp(function (text) {
-                h.triggerElectric(this, text);
+            triggerElectric: operations.methodOp(function (text) {
+                m_input.triggerElectric(this, text);
             }),
             findPosH: function (from, amount, unit, visually) {
                 let dir = 1;
@@ -298,7 +411,7 @@ define([
                     dir = -1;
                     amount = -amount;
                 }
-                let cur = n.clipPos(this.doc, from);
+                let cur = line_pos.clipPos(this.doc, from);
                 for (let i = 0; i < amount; ++i) {
                     cur = findPosH(this.doc, cur, dir, unit, visually);
                     if (cur.hitSide)
@@ -306,20 +419,20 @@ define([
                 }
                 return cur;
             },
-            moveH: m.methodOp(function (dir, unit) {
+            moveH: operations.methodOp(function (dir, unit) {
                 this.extendSelectionsBy(range => {
                     if (this.display.shift || this.doc.extend || range.empty())
                         return findPosH(this.doc, range.head, dir, unit, this.options.rtlMoveVisually);
                     else
                         return dir < 0 ? range.from() : range.to();
-                }, u.sel_move);
+                }, misc.sel_move);
             }),
-            deleteH: m.methodOp(function (dir, unit) {
+            deleteH: operations.methodOp(function (dir, unit) {
                 let sel = this.doc.sel, doc = this.doc;
                 if (sel.somethingSelected())
                     doc.replaceSelection('', null, '+delete');
                 else
-                    a.deleteNearSelection(this, range => {
+                    m_deleteNearSelection.deleteNearSelection(this, range => {
                         let other = findPosH(doc, range.head, dir, unit, false);
                         return dir < 0 ? {
                             from: other,
@@ -336,9 +449,9 @@ define([
                     dir = -1;
                     amount = -amount;
                 }
-                let cur = n.clipPos(this.doc, from);
+                let cur = line_pos.clipPos(this.doc, from);
                 for (let i = 0; i < amount; ++i) {
-                    let coords = o.cursorCoords(this, cur, 'div');
+                    let coords = position_measurement.cursorCoords(this, cur, 'div');
                     if (x == null)
                         x = coords.left;
                     else
@@ -349,27 +462,27 @@ define([
                 }
                 return cur;
             },
-            moveV: m.methodOp(function (dir, unit) {
+            moveV: operations.methodOp(function (dir, unit) {
                 let doc = this.doc, goals = [];
                 let collapse = !this.display.shift && !doc.extend && doc.sel.somethingSelected();
                 doc.extendSelectionsBy(range => {
                     if (collapse)
                         return dir < 0 ? range.from() : range.to();
-                    let headPos = o.cursorCoords(this, range.head, 'div');
+                    let headPos = position_measurement.cursorCoords(this, range.head, 'div');
                     if (range.goalColumn != null)
                         headPos.left = range.goalColumn;
                     goals.push(headPos.left);
                     let pos = findPosV(this, headPos, dir, unit);
                     if (unit == 'page' && range == doc.sel.primary())
-                        r.addToScrollTop(this, o.charCoords(this, pos, 'div').top - headPos.top);
+                        scrolling.addToScrollTop(this, position_measurement.charCoords(this, pos, 'div').top - headPos.top);
                     return pos;
-                }, u.sel_move);
+                }, misc.sel_move);
                 if (goals.length)
                     for (let i = 0; i < doc.sel.ranges.length; i++)
                         doc.sel.ranges[i].goalColumn = goals[i];
             }),
             findWordAt: function (pos) {
-                let doc = this.doc, line = w.getLine(doc, pos.line).text;
+                let doc = this.doc, line = utils_line.getLine(doc, pos.line).text;
                 let start = pos.ch, end = pos.ch;
                 if (line) {
                     let helper = this.getHelper(pos, 'wordChars');
@@ -378,44 +491,44 @@ define([
                     else
                         ++end;
                     let startChar = line.charAt(start);
-                    let check = u.isWordChar(startChar, helper) ? ch => u.isWordChar(ch, helper) : /\s/.test(startChar) ? ch => /\s/.test(ch) : ch => !/\s/.test(ch) && !u.isWordChar(ch);
+                    let check = misc.isWordChar(startChar, helper) ? ch => misc.isWordChar(ch, helper) : /\s/.test(startChar) ? ch => /\s/.test(ch) : ch => !/\s/.test(ch) && !misc.isWordChar(ch);
                     while (start > 0 && check(line.charAt(start - 1)))
                         --start;
                     while (end < line.length && check(line.charAt(end)))
                         ++end;
                 }
-                return new p.Range(n.Pos(pos.line, start), n.Pos(pos.line, end));
+                return new selection.Range(line_pos.Pos(pos.line, start), line_pos.Pos(pos.line, end));
             },
             toggleOverwrite: function (value) {
                 if (value != null && value == this.state.overwrite)
                     return;
                 if (this.state.overwrite = !this.state.overwrite)
-                    d.addClass(this.display.cursorDiv, 'CodeMirror-overwrite');
+                    dom.addClass(this.display.cursorDiv, 'CodeMirror-overwrite');
                 else
-                    d.rmClass(this.display.cursorDiv, 'CodeMirror-overwrite');
-                e.signal(this, 'overwriteToggle', this, this.state.overwrite);
+                    dom.rmClass(this.display.cursorDiv, 'CodeMirror-overwrite');
+                events.signal(this, 'overwriteToggle', this, this.state.overwrite);
             },
             hasFocus: function () {
-                return this.display.input.getField() == d.activeElt();
+                return this.display.input.getField() == dom.activeElt();
             },
             isReadOnly: function () {
                 return !!(this.options.readOnly || this.doc.cantEdit);
             },
-            scrollTo: m.methodOp(function (x, y) {
-                r.scrollToCoords(this, x, y);
+            scrollTo: operations.methodOp(function (x, y) {
+                scrolling.scrollToCoords(this, x, y);
             }),
             getScrollInfo: function () {
                 let scroller = this.display.scroller;
                 return {
                     left: scroller.scrollLeft,
                     top: scroller.scrollTop,
-                    height: scroller.scrollHeight - o.scrollGap(this) - this.display.barHeight,
-                    width: scroller.scrollWidth - o.scrollGap(this) - this.display.barWidth,
-                    clientHeight: o.displayHeight(this),
-                    clientWidth: o.displayWidth(this)
+                    height: scroller.scrollHeight - position_measurement.scrollGap(this) - this.display.barHeight,
+                    width: scroller.scrollWidth - position_measurement.scrollGap(this) - this.display.barWidth,
+                    clientHeight: position_measurement.displayHeight(this),
+                    clientWidth: position_measurement.displayWidth(this)
                 };
             },
-            scrollIntoView: m.methodOp(function (range, margin) {
+            scrollIntoView: operations.methodOp(function (range, margin) {
                 if (range == null) {
                     range = {
                         from: this.doc.sel.primary().head,
@@ -425,7 +538,7 @@ define([
                         margin = this.options.cursorScrollMargin;
                 } else if (typeof range == 'number') {
                     range = {
-                        from: n.Pos(range, 0),
+                        from: line_pos.Pos(range, 0),
                         to: null
                     };
                 } else if (range.from == null) {
@@ -438,61 +551,61 @@ define([
                     range.to = range.from;
                 range.margin = margin || 0;
                 if (range.from.line != null) {
-                    r.scrollToRange(this, range);
+                    scrolling.scrollToRange(this, range);
                 } else {
-                    r.scrollToCoordsRange(this, range.from, range.to, range.margin);
+                    scrolling.scrollToCoordsRange(this, range.from, range.to, range.margin);
                 }
             }),
-            setSize: m.methodOp(function (width, height) {
+            setSize: operations.methodOp(function (width, height) {
                 let interpret = val => typeof val == 'number' || /^\d+$/.test(String(val)) ? val + 'px' : val;
                 if (width != null)
                     this.display.wrapper.style.width = interpret(width);
                 if (height != null)
                     this.display.wrapper.style.height = interpret(height);
                 if (this.options.lineWrapping)
-                    o.clearLineMeasurementCache(this);
+                    position_measurement.clearLineMeasurementCache(this);
                 let lineNo = this.display.viewFrom;
                 this.doc.iter(lineNo, this.display.viewTo, line => {
                     if (line.widgets)
                         for (let i = 0; i < line.widgets.length; i++)
                             if (line.widgets[i].noHScroll) {
-                                x.regLineChange(this, lineNo, 'widget');
+                                view_tracking.regLineChange(this, lineNo, 'widget');
                                 break;
                             }
                     ++lineNo;
                 });
                 this.curOp.forceUpdate = true;
-                e.signal(this, 'refresh', this);
+                events.signal(this, 'refresh', this);
             }),
             operation: function (f) {
-                return m.runInOp(this, f);
+                return operations.runInOp(this, f);
             },
             startOperation: function () {
-                return m.startOperation(this);
+                return operations.startOperation(this);
             },
             endOperation: function () {
-                return m.endOperation(this);
+                return operations.endOperation(this);
             },
-            refresh: m.methodOp(function () {
+            refresh: operations.methodOp(function () {
                 let oldHeight = this.display.cachedTextHeight;
-                x.regChange(this);
+                view_tracking.regChange(this);
                 this.curOp.forceUpdate = true;
-                o.clearCaches(this);
-                r.scrollToCoords(this, this.doc.scrollLeft, this.doc.scrollTop);
-                t.updateGutterSpace(this);
-                if (oldHeight == null || Math.abs(oldHeight - o.textHeight(this.display)) > 0.5)
-                    o.estimateLineHeights(this);
-                e.signal(this, 'refresh', this);
+                position_measurement.clearCaches(this);
+                scrolling.scrollToCoords(this, this.doc.scrollLeft, this.doc.scrollTop);
+                update_display.updateGutterSpace(this);
+                if (oldHeight == null || Math.abs(oldHeight - position_measurement.textHeight(this.display)) > 0.5)
+                    position_measurement.estimateLineHeights(this);
+                events.signal(this, 'refresh', this);
             }),
-            swapDoc: m.methodOp(function (doc) {
+            swapDoc: operations.methodOp(function (doc) {
                 let old = this.doc;
                 old.cm = null;
-                c.attachDoc(this, doc);
-                o.clearCaches(this);
+                m_document_data.attachDoc(this, doc);
+                position_measurement.clearCaches(this);
                 this.display.input.reset();
-                r.scrollToCoords(this, doc.scrollLeft, doc.scrollTop);
+                scrolling.scrollToCoords(this, doc.scrollLeft, doc.scrollTop);
                 this.curOp.forceScroll = true;
-                v.signalLater(this, 'swapDoc', this, old);
+                operation_group.signalLater(this, 'swapDoc', this, old);
                 return old;
             }),
             phrase: function (phraseText) {
@@ -528,7 +641,7 @@ define([
                 return m_scrollbars.updateScrollbars(this,measure);
             }
         };
-        e.eventMixin(CodeMirror);
+        events.eventMixin(CodeMirror);
         CodeMirror.registerHelper = function (type, name, value) {
             if (!helpers.hasOwnProperty(type))
                 helpers[type] = CodeMirror[type] = { _global: [] };
@@ -542,87 +655,5 @@ define([
             });
         };
     };
-    function findPosH(doc, pos, dir, unit, visually) {
-        let oldPos = pos;
-        let origDir = dir;
-        let lineObj = w.getLine(doc, pos.line);
-        function findNextLine() {
-            let l = pos.line + dir;
-            if (l < doc.first || l >= doc.first + doc.size)
-                return false;
-            pos = new n.Pos(l, pos.ch, pos.sticky);
-            return lineObj = w.getLine(doc, l);
-        }
-        function moveOnce(boundToLine) {
-            let next;
-            if (visually) {
-                next = l.moveVisually(doc.cm, lineObj, pos, dir);
-            } else {
-                next = l.moveLogically(lineObj, pos, dir);
-            }
-            if (next == null) {
-                if (!boundToLine && findNextLine())
-                    pos = l.endOfLine(visually, doc.cm, lineObj, pos.line, dir);
-                else
-                    return false;
-            } else {
-                pos = next;
-            }
-            return true;
-        }
-        if (unit == 'char') {
-            moveOnce();
-        } else if (unit == 'column') {
-            moveOnce(true);
-        } else if (unit == 'word' || unit == 'group') {
-            let sawType = null, group = unit == 'group';
-            let helper = doc.cm && doc.cm.getHelper(pos, 'wordChars');
-            for (let first = true;; first = false) {
-                if (dir < 0 && !moveOnce(!first))
-                    break;
-                let cur = lineObj.text.charAt(pos.ch) || '\n';
-                let type = u.isWordChar(cur, helper) ? 'w' : group && cur == '\n' ? 'n' : !group || /\s/.test(cur) ? null : 'p';
-                if (group && !first && !type)
-                    type = 's';
-                if (sawType && sawType != type) {
-                    if (dir < 0) {
-                        dir = 1;
-                        moveOnce();
-                        pos.sticky = 'after';
-                    }
-                    break;
-                }
-                if (type)
-                    sawType = type;
-                if (dir > 0 && !moveOnce(!first))
-                    break;
-            }
-        }
-        let result = q.skipAtomic(doc, pos, oldPos, origDir, true);
-        if (n.equalCursorPos(oldPos, result))
-            result.hitSide = true;
-        return result;
-    }
-    function findPosV(cm, pos, dir, unit) {
-        let doc = cm.doc, x = pos.left, y;
-        if (unit == 'page') {
-            let pageSize = Math.min(cm.display.wrapper.clientHeight, window.innerHeight || document.documentElement.clientHeight);
-            let moveAmount = Math.max(pageSize - 0.5 * o.textHeight(cm.display), 3);
-            y = (dir > 0 ? pos.bottom : pos.top) + dir * moveAmount;
-        } else if (unit == 'line') {
-            y = dir > 0 ? pos.bottom + 3 : pos.top - 3;
-        }
-        let target;
-        for (;;) {
-            target = o.coordsChar(cm, x, y);
-            if (!target.outside)
-                break;
-            if (dir < 0 ? y <= 0 : y >= doc.height) {
-                target.hitSide = true;
-                break;
-            }
-            y += dir * 5;
-        }
-        return target;
-    }
+
 });

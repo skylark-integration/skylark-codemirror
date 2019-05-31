@@ -1,7 +1,7 @@
 define([
     '../display/focus',
     '../util/event'
-], function (a, b) {
+], function (focuses, events) {
     'use strict';
     function forEachCodeMirror(f) {
         if (!document.getElementsByClassName)
@@ -27,14 +27,14 @@ define([
     }
     function registerGlobalHandlers() {
         let resizeTimer;
-        b.on(window, 'resize', () => {
+        events.on(window, 'resize', () => {
             if (resizeTimer == null)
                 resizeTimer = setTimeout(() => {
                     resizeTimer = null;
                     forEachCodeMirror(onResize);
                 }, 100);
         });
-        b.on(window, 'blur', () => forEachCodeMirror(a.onBlur));
+        events.on(window, 'blur', () => forEachCodeMirror(focuses.onBlur));
     }
     function onResize(cm) {
         let d = cm.display;
