@@ -175,9 +175,9 @@ define([
         if (updateDisplayIfNeeded(cm, update)) {
             n.updateHeightsInViewport(cm);
             postUpdateDisplay(cm, update);
-            let barMeasure = l.measureForScrollbars(cm);
+            let barMeasure = cm.measureForScrollbars(); //l.measureForScrollbars(cm);
             m.updateSelection(cm);
-            l.updateScrollbars(cm, barMeasure);
+            cm.updateScrollbars(barMeasure); // l.updateScrollbars(cm, barMeasure);
             setDocumentHeight(cm, barMeasure);
             update.finish();
         }
