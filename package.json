@@ -23,6 +23,8 @@
   "bugs": {
     "url": "https://github.com/skylark-integration/skylark-codemirror/issues"
   },
+  "files": ["demo/", "dist/", "src/","skins/"],
+
   "license": "MIT",
   "dependencies": {
     "skylark-langx": "git+https://github.com/skylarklangx/skylark-langx.git#master"
