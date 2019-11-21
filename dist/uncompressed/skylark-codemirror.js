@@ -6376,7 +6376,6 @@ define('skylark-codemirror/primitives/model/mark_text',[
     };
 });
 define('skylark-codemirror/primitives/model/Doc',[
-    '../edit/CodeMirror',
     '../display/operations',
     '../line/line_data',
     '../line/pos',
@@ -6395,7 +6394,7 @@ define('skylark-codemirror/primitives/model/Doc',[
     './mark_text',
     './selection',
     './selection_updates'
-], function (CodeMirror, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r) {
+], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r) {
     'use strict';
     let nextDocId = 0;
     let Doc = function (text, mode, firstLine, lineSep, direction) {
@@ -6846,7 +6845,8 @@ define('skylark-codemirror/primitives/model/Doc',[
             return copy;
         },
         unlinkDoc: function (other) {
-            if (other instanceof CodeMirror)
+            //if (other instanceof CodeMirror) // modified by lwf
+            if (other.doc)
                 other = other.doc;
             if (this.linked)
                 for (let i = 0; i < this.linked.length; ++i) {
