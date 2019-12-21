@@ -1,7 +1,7 @@
 define([
     '../line/pos',
     '../util/misc'
-], function (a, b) {
+], function (m_pos, m_misc) {
     'use strict';
     class Selection {
         constructor(ranges, primIndex) {
@@ -18,7 +18,7 @@ define([
                 return false;
             for (let i = 0; i < this.ranges.length; i++) {
                 let here = this.ranges[i], there = other.ranges[i];
-                if (!a.equalCursorPos(here.anchor, there.anchor) || !a.equalCursorPos(here.head, there.head))
+                if (!m_pos.equalCursorPos(here.anchor, there.anchor) || !m_pos.equalCursorPos(here.head, there.head))
                     return false;
             }
             return true;
@@ -26,7 +26,7 @@ define([
         deepCopy() {
             let out = [];
             for (let i = 0; i < this.ranges.length; i++)
-                out[i] = new Range(a.copyPos(this.ranges[i].anchor), a.copyPos(this.ranges[i].head));
+                out[i] = new Range(m_pos.copyPos(this.ranges[i].anchor), m_pos.copyPos(this.ranges[i].head));
             return new Selection(out, this.primIndex);
         }
         somethingSelected() {
@@ -40,7 +40,7 @@ define([
                 end = pos;
             for (let i = 0; i < this.ranges.length; i++) {
                 let range = this.ranges[i];
-                if (a.cmp(end, range.from()) >= 0 && a.cmp(pos, range.to()) <= 0)
+                if (m_pos.cmp(end, range.from()) >= 0 && m_pos.cmp(pos, range.to()) <= 0)
                     return i;
             }
             return -1;
@@ -52,10 +52,10 @@ define([
             this.head = head;
         }
         from() {
-            return a.minPos(this.anchor, this.head);
+            return m_pos.minPos(this.anchor, this.head);
         }
         to() {
-            return a.maxPos(this.anchor, this.head);
+            return m_pos.maxPos(this.anchor, this.head);
         }
         empty() {
             return this.head.line == this.anchor.line && this.head.ch == this.anchor.ch;
@@ -64,13 +64,13 @@ define([
     function normalizeSelection(cm, ranges, primIndex) {
         let mayTouch = cm && cm.options.selectionsMayTouch;
         let prim = ranges[primIndex];
-        ranges.sort((a, b) => a.cmp(a.from(), b.from()));
-        primIndex = b.indexOf(ranges, prim);
+        ranges.sort((a, b) => m_pos.cmp(a.from(), b.from()));
+        primIndex = m_misc.indexOf(ranges, prim);
         for (let i = 1; i < ranges.length; i++) {
             let cur = ranges[i], prev = ranges[i - 1];
-            let diff = a.cmp(prev.to(), cur.from());
+            let diff = m_pos.cmp(prev.to(), cur.from());
             if (mayTouch && !cur.empty() ? diff > 0 : diff >= 0) {
-                let from = a.minPos(prev.from(), cur.from()), to = a.maxPos(prev.to(), cur.to());
+                let from = m_pos.minPos(prev.from(), cur.from()), to = m_pos.maxPos(prev.to(), cur.to());
                 let inv = prev.empty() ? cur.from() == cur.head : prev.from() == prev.head;
                 if (i <= primIndex)
                     --primIndex;

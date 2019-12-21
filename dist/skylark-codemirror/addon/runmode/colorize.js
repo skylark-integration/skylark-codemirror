@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-codemirror/
  * @license MIT
  */
-!function(e){"object"==typeof exports&&"object"==typeof module?e(require("../../lib/codemirror"),require("./runmode")):"function"==typeof define&&define.amd?define(["../../lib/codemirror","./runmode"],e):e(CodeMirror)}(function(e){"use strict";var o=/^(p|li|div|h\\d|pre|blockquote|td)$/;function r(e,n){if(3==e.nodeType)return n.push(e.nodeValue);for(var t=e.firstChild;t;t=t.nextSibling)r(t,n),o.test(e.nodeType)&&n.push("\n")}e.colorize=function(o,n){o||(o=document.body.getElementsByTagName("pre"));for(var t=0;t<o.length;++t){var i=o[t],d=i.getAttribute("data-lang")||n;if(d){var u=[];r(i,u),i.innerHTML="",e.runMode(u.join(""),d,i),i.className+=" cm-s-default"}}}});
+define(["../../CodeMirror","./runmode"],function(e){"use strict";var n=/^(p|li|div|h\\d|pre|blockquote|td)$/;function t(e,r){if(3==e.nodeType)return r.push(e.nodeValue);for(var o=e.firstChild;o;o=o.nextSibling)t(o,r),n.test(e.nodeType)&&r.push("\n")}e.colorize=function(n,r){n||(n=document.body.getElementsByTagName("pre"));for(var o=0;o<n.length;++o){var i=n[o],d=i.getAttribute("data-lang")||r;if(d){var a=[];t(i,a),i.innerHTML="",e.runMode(a.join(""),d,i),i.className+=" cm-s-default"}}}});
 //# sourceMappingURL=../../sourcemaps/addon/runmode/colorize.js.map

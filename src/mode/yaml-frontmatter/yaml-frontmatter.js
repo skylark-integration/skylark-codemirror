@@ -1,14 +1,7 @@
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
 // Distributed under an MIT license: https://codemirror.net/LICENSE
 
-(function (mod) {
-  if (typeof exports == "object" && typeof module == "object") // CommonJS
-    mod(require("../../CodeMirror"), require("../yaml/yaml"))
-  else if (typeof define == "function" && define.amd) // AMD
-    define(["../../CodeMirror", "../yaml/yaml"], mod)
-  else // Plain browser env
-    mod(CodeMirror)
-})(function (CodeMirror) {
+define(["../../CodeMirror", "../yaml/yaml"], function (CodeMirror) {
 
   var START = 0, FRONTMATTER = 1, BODY = 2
 
