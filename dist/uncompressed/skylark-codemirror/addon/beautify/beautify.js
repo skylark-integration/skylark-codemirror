@@ -106,9 +106,9 @@ define([
       };
 
       if (typeof val === 'object')
-        cm.state.beautify = langx.mixin({}, defaultOptions, cmOptions, val);
+        cm.state.beautify = langx.mixin({}, defaultOptions, cmOptions, val,true);
       else
-        cm.state.beautify = langx.mixin({}, defaultOptions, cmOptions);
+        cm.state.beautify = langx.mixin({}, defaultOptions, cmOptions,true);
 
       if (cm.state.beautify.initialBeautify)
         beautify(cm);
