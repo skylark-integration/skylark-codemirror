@@ -8,28 +8,28 @@ define([
     './line_numbers',
     './update_display'
 ], function (
-    a, 
-    b, 
-    c, 
-    d, 
-    e, 
+    m_pos, 
+    position_measurement, 
+    browser, 
+    dom, 
+    m_event, 
 //    highlight_worker, 
-    g, 
-    h
+    line_numbers, 
+    update_display
 ) {
     'use strict';
     function maybeScrollWindow(cm, rect) {
-        if (e.signalDOMEvent(cm, 'scrollCursorIntoView'))
+        if (m_event.signalDOMEvent(cm, 'scrollCursorIntoView'))
             return;
         let display = cm.display, box = display.sizer.getBoundingClientRect(), doScroll = null;
         if (rect.top + box.top < 0)
             doScroll = true;
         else if (rect.bottom + box.top > (window.innerHeight || document.documentElement.clientHeight))
             doScroll = false;
-        if (doScroll != null && !c.phantom) {
-            let scrollNode = d.elt('div', '\u200B', null, `position: absolute;
-                         top: ${ rect.top - display.viewOffset - b.paddingTop(cm.display) }px;
-                         height: ${ rect.bottom - rect.top + b.scrollGap(cm) + display.barHeight }px;
+        if (doScroll != null && !browser.phantom) {
+            let scrollNode = dom.elt('div', '\u200B', null, `position: absolute;
+                         top: ${ rect.top - display.viewOffset - position_measurement.paddingTop(cm.display) }px;
+                         height: ${ rect.bottom - rect.top + position_measurement.scrollGap(cm) + display.barHeight }px;
                          left: ${ rect.left }px; width: ${ Math.max(2, rect.right - rect.left) }px;`);
             cm.display.lineSpace.appendChild(scrollNode);
             scrollNode.scrollIntoView(doScroll);
@@ -41,13 +41,13 @@ define([
             margin = 0;
         let rect;
         if (!cm.options.lineWrapping && pos == end) {
-            pos = pos.ch ? a.Pos(pos.line, pos.sticky == 'before' ? pos.ch - 1 : pos.ch, 'after') : pos;
-            end = pos.sticky == 'before' ? a.Pos(pos.line, pos.ch + 1, 'before') : pos;
+            pos = pos.ch ? m_pos.Pos(pos.line, pos.sticky == 'before' ? pos.ch - 1 : pos.ch, 'after') : pos;
+            end = pos.sticky == 'before' ? m_pos.Pos(pos.line, pos.ch + 1, 'before') : pos;
         }
         for (let limit = 0; limit < 5; limit++) {
             let changed = false;
-            let coords = b.cursorCoords(cm, pos);
-            let endCoords = !end || end == pos ? coords : b.cursorCoords(cm, end);
+            let coords = position_measurement.cursorCoords(cm, pos);
+            let endCoords = !end || end == pos ? coords : position_measurement.cursorCoords(cm, end);
             rect = {
                 left: Math.min(coords.left, endCoords.left),
                 top: Math.min(coords.top, endCoords.top) - margin,
@@ -79,14 +79,14 @@ define([
             setScrollLeft(cm, scrollPos.scrollLeft);
     }
     function calculateScrollPos(cm, rect) {
-        let display = cm.display, snapMargin = b.textHeight(cm.display);
+        let display = cm.display, snapMargin = position_measurement.textHeight(cm.display);
         if (rect.top < 0)
             rect.top = 0;
         let screentop = cm.curOp && cm.curOp.scrollTop != null ? cm.curOp.scrollTop : display.scroller.scrollTop;
-        let screen = b.displayHeight(cm), result = {};
+        let screen = position_measurement.displayHeight(cm), result = {};
         if (rect.bottom - rect.top > screen)
             rect.bottom = rect.top + screen;
-        let docBottom = cm.doc.height + b.paddingVert(display);
+        let docBottom = cm.doc.height + position_measurement.paddingVert(display);
         let atTop = rect.top < snapMargin, atBottom = rect.bottom > docBottom - snapMargin;
         if (rect.top < screentop) {
             result.scrollTop = atTop ? 0 : rect.top;
@@ -96,7 +96,7 @@ define([
                 result.scrollTop = newTop;
         }
         let screenleft = cm.curOp && cm.curOp.scrollLeft != null ? cm.curOp.scrollLeft : display.scroller.scrollLeft;
-        let screenw = b.displayWidth(cm) - (cm.options.fixedGutter ? display.gutters.offsetWidth : 0);
+        let screenw = position_measurement.displayWidth(cm) - (cm.options.fixedGutter ? display.gutters.offsetWidth : 0);
         let tooWide = rect.right - rect.left > screenw;
         if (tooWide)
             rect.right = rect.left + screenw;
@@ -139,7 +139,7 @@ define([
         let range = cm.curOp.scrollToPos;
         if (range) {
             cm.curOp.scrollToPos = null;
-            let from = b.estimateCoords(cm, range.from), to = b.estimateCoords(cm, range.to);
+            let from = position_measurement.estimateCoords(cm, range.from), to = position_measurement.estimateCoords(cm, range.to);
             scrollToCoordsRange(cm, from, to, range.margin);
         }
     }
@@ -155,11 +155,11 @@ define([
     function updateScrollTop(cm, val) {
         if (Math.abs(cm.doc.scrollTop - val) < 2)
             return;
-        if (!c.gecko)
-            h.updateDisplaySimple(cm, { top: val });
+        if (!browser.gecko)
+            update_display.updateDisplaySimple(cm, { top: val });
         setScrollTop(cm, val, true);
-        if (c.gecko)
-            h.updateDisplaySimple(cm);
+        if (browser.gecko)
+            update_display.updateDisplaySimple(cm);
         cm.startWorker(cm, 100); // highlight_worker.startWorker(cm, 100);
     }
     function setScrollTop(cm, val, forceScroll) {
@@ -176,7 +176,7 @@ define([
         if ((isScroller ? val == cm.doc.scrollLeft : Math.abs(cm.doc.scrollLeft - val) < 2) && !forceScroll)
             return;
         cm.doc.scrollLeft = val;
-        g.alignHorizontally(cm);
+        line_numbers.alignHorizontally(cm);
         if (cm.display.scroller.scrollLeft != val)
             cm.display.scroller.scrollLeft = val;
         cm.display.scrollbars.setScrollLeft(val);

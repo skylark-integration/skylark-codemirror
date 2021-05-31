@@ -3300,7 +3300,7 @@ define('skylark-codemirror/primitives/display/selection',[
     '../measurement/position_measurement',
     '../util/bidi',
     '../util/dom'
-], function (a, b, c, d, e, f) {
+], function (m_pos, spans, utils_line, position_measurement, bidi, dom) {
     'use strict';
     function updateSelection(cm) {
         cm.display.input.showSelection(cm.display.input.prepareSelection());
@@ -3324,13 +3324,13 @@ define('skylark-codemirror/primitives/display/selection',[
         return result;
     }
     function drawSelectionCursor(cm, head, output) {
-        let pos = d.cursorCoords(cm, head, 'div', null, null, !cm.options.singleCursorHeightPerLine);
-        let cursor = output.appendChild(f.elt('div', '\xA0', 'CodeMirror-cursor'));
+        let pos = position_measurement.cursorCoords(cm, head, 'div', null, null, !cm.options.singleCursorHeightPerLine);
+        let cursor = output.appendChild(dom.elt('div', '\xA0', 'CodeMirror-cursor'));
         cursor.style.left = pos.left + 'px';
         cursor.style.top = pos.top + 'px';
         cursor.style.height = Math.max(0, pos.bottom - pos.top) * cm.options.cursorHeight + 'px';
         if (pos.other) {
-            let otherCursor = output.appendChild(f.elt('div', '\xA0', 'CodeMirror-cursor CodeMirror-secondarycursor'));
+            let otherCursor = output.appendChild(dom.elt('div', '\xA0', 'CodeMirror-cursor CodeMirror-secondarycursor'));
             otherCursor.style.display = '';
             otherCursor.style.left = pos.other.left + 'px';
             otherCursor.style.top = pos.other.top + 'px';
@@ -3343,33 +3343,33 @@ define('skylark-codemirror/primitives/display/selection',[
     function drawSelectionRange(cm, range, output) {
         let display = cm.display, doc = cm.doc;
         let fragment = document.createDocumentFragment();
-        let padding = d.paddingH(cm.display), leftSide = padding.left;
-        let rightSide = Math.max(display.sizerWidth, d.displayWidth(cm) - display.sizer.offsetLeft) - padding.right;
+        let padding = position_measurement.paddingH(cm.display), leftSide = padding.left;
+        let rightSide = Math.max(display.sizerWidth, position_measurement.displayWidth(cm) - display.sizer.offsetLeft) - padding.right;
         let docLTR = doc.direction == 'ltr';
         function add(left, top, width, bottom) {
             if (top < 0)
                 top = 0;
             top = Math.round(top);
             bottom = Math.round(bottom);
-            fragment.appendChild(f.elt('div', null, 'CodeMirror-selected', `position: absolute; left: ${ left }px;
+            fragment.appendChild(dom.elt('div', null, 'CodeMirror-selected', `position: absolute; left: ${ left }px;
                              top: ${ top }px; width: ${ width == null ? rightSide - left : width }px;
                              height: ${ bottom - top }px`));
         }
         function drawForLine(line, fromArg, toArg) {
-            let lineObj = c.getLine(doc, line);
+            let lineObj = utils_line.getLine(doc, line);
             let lineLen = lineObj.text.length;
             let start, end;
             function coords(ch, bias) {
-                return d.charCoords(cm, a.Pos(line, ch), 'div', lineObj, bias);
+                return position_measurement.charCoords(cm, m_pos.Pos(line, ch), 'div', lineObj, bias);
             }
             function wrapX(pos, dir, side) {
-                let extent = d.wrappedLineExtentChar(cm, lineObj, null, pos);
+                let extent = position_measurement.wrappedLineExtentChar(cm, lineObj, null, pos);
                 let prop = dir == 'ltr' == (side == 'after') ? 'left' : 'right';
                 let ch = side == 'after' ? extent.begin : extent.end - (/\s/.test(lineObj.text.charAt(extent.end - 1)) ? 2 : 1);
                 return coords(ch, prop)[prop];
             }
-            let order = e.getOrder(lineObj, doc.direction);
-            e.iterateBidiSections(order, fromArg || 0, toArg == null ? lineLen : toArg, (from, to, dir, i) => {
+            let order = bidi.getOrder(lineObj, doc.direction);
+            bidi.iterateBidiSections(order, fromArg || 0, toArg == null ? lineLen : toArg, (from, to, dir, i) => {
                 let ltr = dir == 'ltr';
                 let fromPos = coords(from, ltr ? 'left' : 'right');
                 let toPos = coords(to - 1, ltr ? 'right' : 'left');
@@ -3417,8 +3417,8 @@ define('skylark-codemirror/primitives/display/selection',[
         if (sFrom.line == sTo.line) {
             drawForLine(sFrom.line, sFrom.ch, sTo.ch);
         } else {
-            let fromLine = c.getLine(doc, sFrom.line), toLine = c.getLine(doc, sTo.line);
-            let singleVLine = b.visualLine(fromLine) == b.visualLine(toLine);
+            let fromLine = utils_line.getLine(doc, sFrom.line), toLine = utils_line.getLine(doc, sTo.line);
+            let singleVLine = spans.visualLine(fromLine) == spans.visualLine(toLine);
             let leftEnd = drawForLine(sFrom.line, sFrom.ch, singleVLine ? fromLine.text.length + 1 : null).end;
             let rightStart = drawForLine(sTo.line, singleVLine ? 0 : null, sTo.ch).start;
             if (singleVLine) {
@@ -4080,28 +4080,28 @@ define('skylark-codemirror/primitives/display/scrolling',[
     './line_numbers',
     './update_display'
 ], function (
-    a, 
-    b, 
-    c, 
-    d, 
-    e, 
+    m_pos, 
+    position_measurement, 
+    browser, 
+    dom, 
+    m_event, 
 //    highlight_worker, 
-    g, 
-    h
+    line_numbers, 
+    update_display
 ) {
     'use strict';
     function maybeScrollWindow(cm, rect) {
-        if (e.signalDOMEvent(cm, 'scrollCursorIntoView'))
+        if (m_event.signalDOMEvent(cm, 'scrollCursorIntoView'))
             return;
         let display = cm.display, box = display.sizer.getBoundingClientRect(), doScroll = null;
         if (rect.top + box.top < 0)
             doScroll = true;
         else if (rect.bottom + box.top > (window.innerHeight || document.documentElement.clientHeight))
             doScroll = false;
-        if (doScroll != null && !c.phantom) {
-            let scrollNode = d.elt('div', '\u200B', null, `position: absolute;
-                         top: ${ rect.top - display.viewOffset - b.paddingTop(cm.display) }px;
-                         height: ${ rect.bottom - rect.top + b.scrollGap(cm) + display.barHeight }px;
+        if (doScroll != null && !browser.phantom) {
+            let scrollNode = dom.elt('div', '\u200B', null, `position: absolute;
+                         top: ${ rect.top - display.viewOffset - position_measurement.paddingTop(cm.display) }px;
+                         height: ${ rect.bottom - rect.top + position_measurement.scrollGap(cm) + display.barHeight }px;
                          left: ${ rect.left }px; width: ${ Math.max(2, rect.right - rect.left) }px;`);
             cm.display.lineSpace.appendChild(scrollNode);
             scrollNode.scrollIntoView(doScroll);
@@ -4113,13 +4113,13 @@ define('skylark-codemirror/primitives/display/scrolling',[
             margin = 0;
         let rect;
         if (!cm.options.lineWrapping && pos == end) {
-            pos = pos.ch ? a.Pos(pos.line, pos.sticky == 'before' ? pos.ch - 1 : pos.ch, 'after') : pos;
-            end = pos.sticky == 'before' ? a.Pos(pos.line, pos.ch + 1, 'before') : pos;
+            pos = pos.ch ? m_pos.Pos(pos.line, pos.sticky == 'before' ? pos.ch - 1 : pos.ch, 'after') : pos;
+            end = pos.sticky == 'before' ? m_pos.Pos(pos.line, pos.ch + 1, 'before') : pos;
         }
         for (let limit = 0; limit < 5; limit++) {
             let changed = false;
-            let coords = b.cursorCoords(cm, pos);
-            let endCoords = !end || end == pos ? coords : b.cursorCoords(cm, end);
+            let coords = position_measurement.cursorCoords(cm, pos);
+            let endCoords = !end || end == pos ? coords : position_measurement.cursorCoords(cm, end);
             rect = {
                 left: Math.min(coords.left, endCoords.left),
                 top: Math.min(coords.top, endCoords.top) - margin,
@@ -4151,14 +4151,14 @@ define('skylark-codemirror/primitives/display/scrolling',[
             setScrollLeft(cm, scrollPos.scrollLeft);
     }
     function calculateScrollPos(cm, rect) {
-        let display = cm.display, snapMargin = b.textHeight(cm.display);
+        let display = cm.display, snapMargin = position_measurement.textHeight(cm.display);
         if (rect.top < 0)
             rect.top = 0;
         let screentop = cm.curOp && cm.curOp.scrollTop != null ? cm.curOp.scrollTop : display.scroller.scrollTop;
-        let screen = b.displayHeight(cm), result = {};
+        let screen = position_measurement.displayHeight(cm), result = {};
         if (rect.bottom - rect.top > screen)
             rect.bottom = rect.top + screen;
-        let docBottom = cm.doc.height + b.paddingVert(display);
+        let docBottom = cm.doc.height + position_measurement.paddingVert(display);
         let atTop = rect.top < snapMargin, atBottom = rect.bottom > docBottom - snapMargin;
         if (rect.top < screentop) {
             result.scrollTop = atTop ? 0 : rect.top;
@@ -4168,7 +4168,7 @@ define('skylark-codemirror/primitives/display/scrolling',[
                 result.scrollTop = newTop;
         }
         let screenleft = cm.curOp && cm.curOp.scrollLeft != null ? cm.curOp.scrollLeft : display.scroller.scrollLeft;
-        let screenw = b.displayWidth(cm) - (cm.options.fixedGutter ? display.gutters.offsetWidth : 0);
+        let screenw = position_measurement.displayWidth(cm) - (cm.options.fixedGutter ? display.gutters.offsetWidth : 0);
         let tooWide = rect.right - rect.left > screenw;
         if (tooWide)
             rect.right = rect.left + screenw;
@@ -4211,7 +4211,7 @@ define('skylark-codemirror/primitives/display/scrolling',[
         let range = cm.curOp.scrollToPos;
         if (range) {
             cm.curOp.scrollToPos = null;
-            let from = b.estimateCoords(cm, range.from), to = b.estimateCoords(cm, range.to);
+            let from = position_measurement.estimateCoords(cm, range.from), to = position_measurement.estimateCoords(cm, range.to);
             scrollToCoordsRange(cm, from, to, range.margin);
         }
     }
@@ -4227,11 +4227,11 @@ define('skylark-codemirror/primitives/display/scrolling',[
     function updateScrollTop(cm, val) {
         if (Math.abs(cm.doc.scrollTop - val) < 2)
             return;
-        if (!c.gecko)
-            h.updateDisplaySimple(cm, { top: val });
+        if (!browser.gecko)
+            update_display.updateDisplaySimple(cm, { top: val });
         setScrollTop(cm, val, true);
-        if (c.gecko)
-            h.updateDisplaySimple(cm);
+        if (browser.gecko)
+            update_display.updateDisplaySimple(cm);
         cm.startWorker(cm, 100); // highlight_worker.startWorker(cm, 100);
     }
     function setScrollTop(cm, val, forceScroll) {
@@ -4248,7 +4248,7 @@ define('skylark-codemirror/primitives/display/scrolling',[
         if ((isScroller ? val == cm.doc.scrollLeft : Math.abs(cm.doc.scrollLeft - val) < 2) && !forceScroll)
             return;
         cm.doc.scrollLeft = val;
-        g.alignHorizontally(cm);
+        line_numbers.alignHorizontally(cm);
         if (cm.display.scroller.scrollLeft != val)
             cm.display.scroller.scrollLeft = val;
         cm.display.scrollbars.setScrollLeft(val);
@@ -5322,45 +5322,45 @@ define('skylark-codemirror/primitives/model/selection_updates',[
     '../util/misc',
     './history',
     './selection'
-], function (a, b, c, d, e, f, g, h) {
+], function (operation_group, scrolling, m_pos, utils_line, m_event, misc, m_history, m_selection) {
     'use strict';
     function extendRange(range, head, other, extend) {
         if (extend) {
             let anchor = range.anchor;
             if (other) {
-                let posBefore = c.cmp(head, anchor) < 0;
-                if (posBefore != c.cmp(other, anchor) < 0) {
+                let posBefore = m_pos.cmp(head, anchor) < 0;
+                if (posBefore != m_pos.cmp(other, anchor) < 0) {
                     anchor = head;
                     head = other;
-                } else if (posBefore != c.cmp(head, other) < 0) {
+                } else if (posBefore != m_pos.cmp(head, other) < 0) {
                     head = other;
                 }
             }
-            return new h.Range(anchor, head);
+            return new m_selection.Range(anchor, head);
         } else {
-            return new h.Range(other || head, head);
+            return new m_selection.Range(other || head, head);
         }
     }
     function extendSelection(doc, head, other, options, extend) {
         if (extend == null)
             extend = doc.cm && (doc.cm.display.shift || doc.extend);
-        setSelection(doc, new h.Selection([extendRange(doc.sel.primary(), head, other, extend)], 0), options);
+        setSelection(doc, new m_selection.Selection([extendRange(doc.sel.primary(), head, other, extend)], 0), options);
     }
     function extendSelections(doc, heads, options) {
         let out = [];
         let extend = doc.cm && (doc.cm.display.shift || doc.extend);
         for (let i = 0; i < doc.sel.ranges.length; i++)
             out[i] = extendRange(doc.sel.ranges[i], heads[i], null, extend);
-        let newSel = h.normalizeSelection(doc.cm, out, doc.sel.primIndex);
+        let newSel = m_selection.normalizeSelection(doc.cm, out, doc.sel.primIndex);
         setSelection(doc, newSel, options);
     }
     function replaceOneSelection(doc, i, range, options) {
         let ranges = doc.sel.ranges.slice(0);
         ranges[i] = range;
-        setSelection(doc, h.normalizeSelection(doc.cm, ranges, doc.sel.primIndex), options);
+        setSelection(doc, m_selection.normalizeSelection(doc.cm, ranges, doc.sel.primIndex), options);
     }
     function setSimpleSelection(doc, anchor, head, options) {
-        setSelection(doc, h.simpleSelection(anchor, head), options);
+        setSelection(doc, m_selection.simpleSelection(anchor, head), options);
     }
     function filterSelectionChange(doc, sel, options) {
         let obj = {
@@ -5368,20 +5368,20 @@ define('skylark-codemirror/primitives/model/selection_updates',[
             update: function (ranges) {
                 this.ranges = [];
                 for (let i = 0; i < ranges.length; i++)
-                    this.ranges[i] = new h.Range(c.clipPos(doc, ranges[i].anchor), c.clipPos(doc, ranges[i].head));
+                    this.ranges[i] = new m_selection.Range(m_pos.clipPos(doc, ranges[i].anchor), m_pos.clipPos(doc, ranges[i].head));
             },
             origin: options && options.origin
         };
-        e.signal(doc, 'beforeSelectionChange', doc, obj);
+        m_event.signal(doc, 'beforeSelectionChange', doc, obj);
         if (doc.cm)
-            e.signal(doc.cm, 'beforeSelectionChange', doc.cm, obj);
+            m_event.signal(doc.cm, 'beforeSelectionChange', doc.cm, obj);
         if (obj.ranges != sel.ranges)
-            return h.normalizeSelection(doc.cm, obj.ranges, obj.ranges.length - 1);
+            return m_selection.normalizeSelection(doc.cm, obj.ranges, obj.ranges.length - 1);
         else
             return sel;
     }
     function setSelectionReplaceHistory(doc, sel, options) {
-        let done = doc.history.done, last = f.lst(done);
+        let done = doc.history.done, last = misc.lst(done);
         if (last && last.ranges) {
             done[done.length - 1] = sel;
             setSelectionNoUndo(doc, sel, options);
@@ -5391,15 +5391,15 @@ define('skylark-codemirror/primitives/model/selection_updates',[
     }
     function setSelection(doc, sel, options) {
         setSelectionNoUndo(doc, sel, options);
-        g.addSelectionToHistory(doc, doc.sel, doc.cm ? doc.cm.curOp.id : NaN, options);
+        m_history.addSelectionToHistory(doc, doc.sel, doc.cm ? doc.cm.curOp.id : NaN, options);
     }
     function setSelectionNoUndo(doc, sel, options) {
-        if (e.hasHandler(doc, 'beforeSelectionChange') || doc.cm && e.hasHandler(doc.cm, 'beforeSelectionChange'))
+        if (m_event.hasHandler(doc, 'beforeSelectionChange') || doc.cm && m_event.hasHandler(doc.cm, 'beforeSelectionChange'))
             sel = filterSelectionChange(doc, sel, options);
-        let bias = options && options.bias || (c.cmp(sel.primary().head, doc.sel.primary().head) < 0 ? -1 : 1);
+        let bias = options && options.bias || (m_pos.cmp(sel.primary().head, doc.sel.primary().head) < 0 ? -1 : 1);
         setSelectionInner(doc, skipAtomicInSelection(doc, sel, bias, true));
         if (!(options && options.scroll === false) && doc.cm)
-            b.ensureCursorVisible(doc.cm);
+            scrolling.ensureCursorVisible(doc.cm);
     }
     function setSelectionInner(doc, sel) {
         if (sel.equals(doc.sel))
@@ -5408,9 +5408,9 @@ define('skylark-codemirror/primitives/model/selection_updates',[
         if (doc.cm) {
             doc.cm.curOp.updateInput = 1;
             doc.cm.curOp.selectionChanged = true;
-            e.signalCursorActivity(doc.cm);
+            m_event.signalCursorActivity(doc.cm);
         }
-        a.signalLater(doc, 'cursorActivity', doc);
+        operation_group.signalLater(doc, 'cursorActivity', doc);
     }
     function reCheckSelection(doc) {
         setSelectionInner(doc, skipAtomicInSelection(doc, doc.sel, null, false));
@@ -5425,19 +5425,19 @@ define('skylark-codemirror/primitives/model/selection_updates',[
             if (out || newAnchor != range.anchor || newHead != range.head) {
                 if (!out)
                     out = sel.ranges.slice(0, i);
-                out[i] = new h.Range(newAnchor, newHead);
+                out[i] = new m_selection.Range(newAnchor, newHead);
             }
         }
-        return out ? h.normalizeSelection(doc.cm, out, sel.primIndex) : sel;
+        return out ? m_selection.normalizeSelection(doc.cm, out, sel.primIndex) : sel;
     }
     function skipAtomicInner(doc, pos, oldPos, dir, mayClear) {
-        let line = d.getLine(doc, pos.line);
+        let line = utils_line.getLine(doc, pos.line);
         if (line.markedSpans)
             for (let i = 0; i < line.markedSpans.length; ++i) {
                 let sp = line.markedSpans[i], m = sp.marker;
                 if ((sp.from == null || (m.inclusiveLeft ? sp.from <= pos.ch : sp.from < pos.ch)) && (sp.to == null || (m.inclusiveRight ? sp.to >= pos.ch : sp.to > pos.ch))) {
                     if (mayClear) {
-                        e.signal(m, 'beforeCursorEnter');
+                        m_event.signal(m, 'beforeCursorEnter');
                         if (m.explicitlyCleared) {
                             if (!line.markedSpans)
                                 break;
@@ -5453,7 +5453,7 @@ define('skylark-codemirror/primitives/model/selection_updates',[
                         let near = m.find(dir < 0 ? 1 : -1), diff;
                         if (dir < 0 ? m.inclusiveRight : m.inclusiveLeft)
                             near = movePos(doc, near, -dir, near && near.line == pos.line ? line : null);
-                        if (near && near.line == pos.line && (diff = c.cmp(near, oldPos)) && (dir < 0 ? diff < 0 : diff > 0))
+                        if (near && near.line == pos.line && (diff = m_pos.cmp(near, oldPos)) && (dir < 0 ? diff < 0 : diff > 0))
                             return skipAtomicInner(doc, near, pos, dir, mayClear);
                     }
                     let far = m.find(dir < 0 ? -1 : 1);
@@ -5469,27 +5469,27 @@ define('skylark-codemirror/primitives/model/selection_updates',[
         let found = skipAtomicInner(doc, pos, oldPos, dir, mayClear) || !mayClear && skipAtomicInner(doc, pos, oldPos, dir, true) || skipAtomicInner(doc, pos, oldPos, -dir, mayClear) || !mayClear && skipAtomicInner(doc, pos, oldPos, -dir, true);
         if (!found) {
             doc.cantEdit = true;
-            return c.Pos(doc.first, 0);
+            return m_pos.Pos(doc.first, 0);
         }
         return found;
     }
     function movePos(doc, pos, dir, line) {
         if (dir < 0 && pos.ch == 0) {
             if (pos.line > doc.first)
-                return c.clipPos(doc, c.Pos(pos.line - 1));
+                return m_pos.clipPos(doc, m_pos.Pos(pos.line - 1));
             else
                 return null;
-        } else if (dir > 0 && pos.ch == (line || d.getLine(doc, pos.line)).text.length) {
+        } else if (dir > 0 && pos.ch == (line || utils_line.getLine(doc, pos.line)).text.length) {
             if (pos.line < doc.first + doc.size - 1)
-                return c.Pos(pos.line + 1, 0);
+                return m_pos.Pos(pos.line + 1, 0);
             else
                 return null;
         } else {
-            return new c.Pos(pos.line, pos.ch + dir);
+            return new m_pos.Pos(pos.line, pos.ch + dir);
         }
     }
     function selectAll(cm) {
-        cm.setSelection(c.Pos(cm.firstLine(), 0), c.Pos(cm.lastLine()), f.sel_dontScroll);
+        cm.setSelection(m_pos.Pos(cm.firstLine(), 0), m_pos.Pos(cm.lastLine()), misc.sel_dontScroll);
     }
     return {
         extendRange: extendRange,
@@ -6109,7 +6109,7 @@ define('skylark-codemirror/primitives/model/mark_text',[
     './document_data',
     './history',
     './selection_updates'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) {
+], function (dom, m_event, operations, m_pos, utils_line, position_measurement, saw_special_spans, spans, misc, operation_group, widgets, view_tracking, document_data, m_history, selection_updates) {
     'use strict';
     let nextMarkerId = 0;
     class TextMarker {
@@ -6124,31 +6124,31 @@ define('skylark-codemirror/primitives/model/mark_text',[
                 return;
             let cm = this.doc.cm, withOp = cm && !cm.curOp;
             if (withOp)
-                c.startOperation(cm);
-            if (b.hasHandler(this, 'clear')) {
+                operations.startOperation(cm);
+            if (m_event.hasHandler(this, 'clear')) {
                 let found = this.find();
                 if (found)
-                    j.signalLater(this, 'clear', found.from, found.to);
+                    operation_group.signalLater(this, 'clear', found.from, found.to);
             }
             let min = null, max = null;
             for (let i = 0; i < this.lines.length; ++i) {
                 let line = this.lines[i];
-                let span = h.getMarkedSpanFor(line.markedSpans, this);
+                let span = spans.getMarkedSpanFor(line.markedSpans, this);
                 if (cm && !this.collapsed)
-                    l.regLineChange(cm, e.lineNo(line), 'text');
+                    view_tracking.regLineChange(cm, utils_line.lineNo(line), 'text');
                 else if (cm) {
                     if (span.to != null)
-                        max = e.lineNo(line);
+                        max = utils_line.lineNo(line);
                     if (span.from != null)
-                        min = e.lineNo(line);
+                        min = utils_line.lineNo(line);
                 }
-                line.markedSpans = h.removeMarkedSpan(line.markedSpans, span);
-                if (span.from == null && this.collapsed && !h.lineIsHidden(this.doc, line) && cm)
-                    e.updateLineHeight(line, f.textHeight(cm.display));
+                line.markedSpans = spans.removeMarkedSpan(line.markedSpans, span);
+                if (span.from == null && this.collapsed && !spans.lineIsHidden(this.doc, line) && cm)
+                    utils_line.updateLineHeight(line, position_measurement.textHeight(cm.display));
             }
             if (cm && this.collapsed && !cm.options.lineWrapping)
                 for (let i = 0; i < this.lines.length; ++i) {
-                    let visual = h.visualLine(this.lines[i]), len = h.lineLength(visual);
+                    let visual = spans.visualLine(this.lines[i]), len = spans.lineLength(visual);
                     if (len > cm.display.maxLineLength) {
                         cm.display.maxLine = visual;
                         cm.display.maxLineLength = len;
@@ -6156,18 +6156,18 @@ define('skylark-codemirror/primitives/model/mark_text',[
                     }
                 }
             if (min != null && cm && this.collapsed)
-                l.regChange(cm, min, max + 1);
+                view_tracking.regChange(cm, min, max + 1);
             this.lines.length = 0;
             this.explicitlyCleared = true;
             if (this.atomic && this.doc.cantEdit) {
                 this.doc.cantEdit = false;
                 if (cm)
-                    o.reCheckSelection(cm.doc);
+                    selection_updates.reCheckSelection(cm.doc);
             }
             if (cm)
-                j.signalLater(cm, 'markerCleared', cm, this, min, max);
+                operation_group.signalLater(cm, 'markerCleared', cm, this, min, max);
             if (withOp)
-                c.endOperation(cm);
+                operations.endOperation(cm);
             if (this.parent)
                 this.parent.clear();
         }
@@ -6177,14 +6177,14 @@ define('skylark-codemirror/primitives/model/mark_text',[
             let from, to;
             for (let i = 0; i < this.lines.length; ++i) {
                 let line = this.lines[i];
-                let span = h.getMarkedSpanFor(line.markedSpans, this);
+                let span = spans.getMarkedSpanFor(line.markedSpans, this);
                 if (span.from != null) {
-                    from = d.Pos(lineObj ? line : e.lineNo(line), span.from);
+                    from = m_pos.Pos(lineObj ? line : utils_line.lineNo(line), span.from);
                     if (side == -1)
                         return from;
                 }
                 if (span.to != null) {
-                    to = d.Pos(lineObj ? line : e.lineNo(line), span.to);
+                    to = m_pos.Pos(lineObj ? line : utils_line.lineNo(line), span.to);
                     if (side == 1)
                         return to;
                 }
@@ -6198,88 +6198,88 @@ define('skylark-codemirror/primitives/model/mark_text',[
             let pos = this.find(-1, true), widget = this, cm = this.doc.cm;
             if (!pos || !cm)
                 return;
-            c.runInOp(cm, () => {
-                let line = pos.line, lineN = e.lineNo(pos.line);
-                let view = f.findViewForLine(cm, lineN);
+            operations.runInOp(cm, () => {
+                let line = pos.line, lineN = utils_line.lineNo(pos.line);
+                let view = position_measurement.findViewForLine(cm, lineN);
                 if (view) {
-                    f.clearLineMeasurementCacheFor(view);
+                    position_measurement.clearLineMeasurementCacheFor(view);
                     cm.curOp.selectionChanged = cm.curOp.forceUpdate = true;
                 }
                 cm.curOp.updateMaxLine = true;
-                if (!h.lineIsHidden(widget.doc, line) && widget.height != null) {
+                if (!spans.lineIsHidden(widget.doc, line) && widget.height != null) {
                     let oldHeight = widget.height;
                     widget.height = null;
-                    let dHeight = k.widgetHeight(widget) - oldHeight;
+                    let dHeight = widgets.widgetHeight(widget) - oldHeight;
                     if (dHeight)
-                        e.updateLineHeight(line, line.height + dHeight);
+                        utils_line.updateLineHeight(line, line.height + dHeight);
                 }
-                j.signalLater(cm, 'markerChanged', cm, this);
+                operation_group.signalLater(cm, 'markerChanged', cm, this);
             });
         }
         attachLine(line) {
             if (!this.lines.length && this.doc.cm) {
                 let op = this.doc.cm.curOp;
-                if (!op.maybeHiddenMarkers || i.indexOf(op.maybeHiddenMarkers, this) == -1)
+                if (!op.maybeHiddenMarkers || misc.indexOf(op.maybeHiddenMarkers, this) == -1)
                     (op.maybeUnhiddenMarkers || (op.maybeUnhiddenMarkers = [])).push(this);
             }
             this.lines.push(line);
         }
         detachLine(line) {
-            this.lines.splice(i.indexOf(this.lines, line), 1);
+            this.lines.splice(misc.indexOf(this.lines, line), 1);
             if (!this.lines.length && this.doc.cm) {
                 let op = this.doc.cm.curOp;
                 (op.maybeHiddenMarkers || (op.maybeHiddenMarkers = [])).push(this);
             }
         }
     }
-    b.eventMixin(TextMarker);
+    m_event.eventMixin(TextMarker);
     function markText(doc, from, to, options, type) {
         if (options && options.shared)
             return markTextShared(doc, from, to, options, type);
         if (doc.cm && !doc.cm.curOp)
-            return c.operation(doc.cm, markText)(doc, from, to, options, type);
-        let marker = new TextMarker(doc, type), diff = d.cmp(from, to);
+            return operations.operation(doc.cm, markText)(doc, from, to, options, type);
+        let marker = new TextMarker(doc, type), diff = m_pos.cmp(from, to);
         if (options)
-            i.copyObj(options, marker, false);
+            misc.copyObj(options, marker, false);
         if (diff > 0 || diff == 0 && marker.clearWhenEmpty !== false)
             return marker;
         if (marker.replacedWith) {
             marker.collapsed = true;
-            marker.widgetNode = a.eltP('span', [marker.replacedWith], 'CodeMirror-widget');
+            marker.widgetNode = dom.eltP('span', [marker.replacedWith], 'CodeMirror-widget');
             if (!options.handleMouseEvents)
                 marker.widgetNode.setAttribute('cm-ignore-events', 'true');
             if (options.insertLeft)
                 marker.widgetNode.insertLeft = true;
         }
         if (marker.collapsed) {
-            if (h.conflictingCollapsedRange(doc, from.line, from, to, marker) || from.line != to.line && h.conflictingCollapsedRange(doc, to.line, from, to, marker))
+            if (spans.conflictingCollapsedRange(doc, from.line, from, to, marker) || from.line != to.line && spans.conflictingCollapsedRange(doc, to.line, from, to, marker))
                 throw new Error('Inserting collapsed marker partially overlapping an existing one');
-            g.seeCollapsedSpans();
+            saw_special_spans.seeCollapsedSpans();
         }
         if (marker.addToHistory)
-            n.addChangeToHistory(doc, {
+            m_history.addChangeToHistory(doc, {
                 from: from,
                 to: to,
                 origin: 'markText'
             }, doc.sel, NaN);
         let curLine = from.line, cm = doc.cm, updateMaxLine;
         doc.iter(curLine, to.line + 1, line => {
-            if (cm && marker.collapsed && !cm.options.lineWrapping && h.visualLine(line) == cm.display.maxLine)
+            if (cm && marker.collapsed && !cm.options.lineWrapping && spans.visualLine(line) == cm.display.maxLine)
                 updateMaxLine = true;
             if (marker.collapsed && curLine != from.line)
-                e.updateLineHeight(line, 0);
-            h.addMarkedSpan(line, new h.MarkedSpan(marker, curLine == from.line ? from.ch : null, curLine == to.line ? to.ch : null));
+                utils_line.updateLineHeight(line, 0);
+            spans.addMarkedSpan(line, new spans.MarkedSpan(marker, curLine == from.line ? from.ch : null, curLine == to.line ? to.ch : null));
             ++curLine;
         });
         if (marker.collapsed)
             doc.iter(from.line, to.line + 1, line => {
-                if (h.lineIsHidden(doc, line))
-                    e.updateLineHeight(line, 0);
+                if (spans.lineIsHidden(doc, line))
+                    utils_line.updateLineHeight(line, 0);
             });
         if (marker.clearOnEnter)
-            b.on(marker, 'beforeCursorEnter', () => marker.clear());
+            m_event.on(marker, 'beforeCursorEnter', () => marker.clear());
         if (marker.readOnly) {
-            g.seeReadOnlySpans();
+            saw_special_spans.seeReadOnlySpans();
             if (doc.history.done.length || doc.history.undone.length)
                 doc.clearHistory();
         }
@@ -6291,13 +6291,13 @@ define('skylark-codemirror/primitives/model/mark_text',[
             if (updateMaxLine)
                 cm.curOp.updateMaxLine = true;
             if (marker.collapsed)
-                l.regChange(cm, from.line, to.line + 1);
+                view_tracking.regChange(cm, from.line, to.line + 1);
             else if (marker.className || marker.startStyle || marker.endStyle || marker.css || marker.attributes || marker.title)
                 for (let i = from.line; i <= to.line; i++)
-                    l.regLineChange(cm, i, 'text');
+                    view_tracking.regLineChange(cm, i, 'text');
             if (marker.atomic)
-                o.reCheckSelection(cm.doc);
-            j.signalLater(cm, 'markerAdded', cm, marker);
+                selection_updates.reCheckSelection(cm.doc);
+            operation_group.signalLater(cm, 'markerAdded', cm, marker);
         }
         return marker;
     }
@@ -6314,37 +6314,37 @@ define('skylark-codemirror/primitives/model/mark_text',[
             this.explicitlyCleared = true;
             for (let i = 0; i < this.markers.length; ++i)
                 this.markers[i].clear();
-            j.signalLater(this, 'clear');
+            operation_group.signalLater(this, 'clear');
         }
         find(side, lineObj) {
             return this.primary.find(side, lineObj);
         }
     }
-    b.eventMixin(SharedTextMarker);
+    m_event.eventMixin(SharedTextMarker);
     function markTextShared(doc, from, to, options, type) {
-        options = i.copyObj(options);
+        options = misc.copyObj(options);
         options.shared = false;
         let markers = [markText(doc, from, to, options, type)], primary = markers[0];
         let widget = options.widgetNode;
-        m.linkedDocs(doc, doc => {
+        document_data.linkedDocs(doc, doc => {
             if (widget)
                 options.widgetNode = widget.cloneNode(true);
-            markers.push(markText(doc, d.clipPos(doc, from), d.clipPos(doc, to), options, type));
+            markers.push(markText(doc, m_pos.clipPos(doc, from), m_pos.clipPos(doc, to), options, type));
             for (let i = 0; i < doc.linked.length; ++i)
                 if (doc.linked[i].isParent)
                     return;
-            primary = i.lst(markers);
+            primary = misc.lst(markers);
         });
         return new SharedTextMarker(markers, primary);
     }
     function findSharedMarkers(doc) {
-        return doc.findMarks(d.Pos(doc.first, 0), doc.clipPos(d.Pos(doc.lastLine())), m => m.parent);
+        return doc.findMarks(m_pos.Pos(doc.first, 0), doc.clipPos(m_pos.Pos(doc.lastLine())), m => m.parent);
     }
     function copySharedMarkers(doc, markers) {
         for (let i = 0; i < markers.length; i++) {
             let marker = markers[i], pos = marker.find();
             let mFrom = doc.clipPos(pos.from), mTo = doc.clipPos(pos.to);
-            if (d.cmp(mFrom, mTo)) {
+            if (m_pos.cmp(mFrom, mTo)) {
                 let subMark = markText(doc, mFrom, mTo, marker.primary, marker.primary.type);
                 marker.markers.push(subMark);
                 subMark.parent = marker;
@@ -6354,10 +6354,10 @@ define('skylark-codemirror/primitives/model/mark_text',[
     function detachSharedMarkers(markers) {
         for (let i = 0; i < markers.length; i++) {
             let marker = markers[i], linked = [marker.primary.doc];
-            m.linkedDocs(marker.primary.doc, d => linked.push(d));
+            document_data.linkedDocs(marker.primary.doc, d => linked.push(d));
             for (let j = 0; j < marker.markers.length; j++) {
                 let subMarker = marker.markers[j];
-                if (i.indexOf(linked, subMarker.doc) == -1) {
+                if (misc.indexOf(linked, subMarker.doc) == -1) {
                     subMarker.parent = null;
                     marker.markers.splice(j--, 1);
                 }
@@ -6392,7 +6392,7 @@ define('skylark-codemirror/primitives/model/Doc',[
     './mark_text',
     './selection',
     './selection_updates'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r) {
+], function (operations, line_data, m_pos, spans, utils_line, dom, feature_detection, misc, scrolling, changes, change_measurement, chunk, document_data, m_history, line_widget, mark_text, m_selection, selection_updates) {
     'use strict';
     let nextDocId = 0;
     let Doc = function (text, mode, firstLine, lineSep, direction) {
@@ -6400,15 +6400,15 @@ define('skylark-codemirror/primitives/model/Doc',[
             return new Doc(text, mode, firstLine, lineSep, direction);
         if (firstLine == null)
             firstLine = 0;
-        l.BranchChunk.call(this, [new l.LeafChunk([new b.Line('', null)])]);
+        chunk.BranchChunk.call(this, [new chunk.LeafChunk([new line_data.Line('', null)])]);
         this.first = firstLine;
         this.scrollTop = this.scrollLeft = 0;
         this.cantEdit = false;
         this.cleanGeneration = 1;
         this.modeFrontier = this.highlightFrontier = firstLine;
-        let start = c.Pos(firstLine, 0);
-        this.sel = q.simpleSelection(start);
-        this.history = new n.History(null);
+        let start = m_pos.Pos(firstLine, 0);
+        this.sel = m_selection.simpleSelection(start);
+        this.history = new m_history.History(null);
         this.id = ++nextDocId;
         this.modeOption = mode;
         this.lineSep = lineSep;
@@ -6416,14 +6416,14 @@ define('skylark-codemirror/primitives/model/Doc',[
         this.extend = false;
         if (typeof text == 'string')
             text = this.splitLines(text);
-        m.updateDoc(this, {
+        document_data.updateDoc(this, {
             from: start,
             to: start,
             text: text
         });
-        r.setSelection(this, q.simpleSelection(start), h.sel_dontScroll);
+        selection_updates.setSelection(this, m_selection.simpleSelection(start), misc.sel_dontScroll);
     };
-    Doc.prototype = h.createObj(l.BranchChunk.prototype, {
+    Doc.prototype = misc.createObj(chunk.BranchChunk.prototype, {
         constructor: Doc,
         iter: function (from, to, op) {
             if (op)
@@ -6441,31 +6441,31 @@ define('skylark-codemirror/primitives/model/Doc',[
             this.removeInner(at - this.first, n);
         },
         getValue: function (lineSep) {
-            let lines = e.getLines(this, this.first, this.first + this.size);
+            let lines = utils_line.getLines(this, this.first, this.first + this.size);
             if (lineSep === false)
                 return lines;
             return lines.join(lineSep || this.lineSeparator());
         },
-        setValue: a.docMethodOp(function (code) {
-            let top = c.Pos(this.first, 0), last = this.first + this.size - 1;
-            j.makeChange(this, {
+        setValue: operations.docMethodOp(function (code) {
+            let top = m_pos.Pos(this.first, 0), last = this.first + this.size - 1;
+            changes.makeChange(this, {
                 from: top,
-                to: c.Pos(last, e.getLine(this, last).text.length),
+                to: m_pos.Pos(last, utils_line.getLine(this, last).text.length),
                 text: this.splitLines(code),
                 origin: 'setValue',
                 full: true
             }, true);
             if (this.cm)
-                i.scrollToCoords(this.cm, 0, 0);
-            r.setSelection(this, q.simpleSelection(top), h.sel_dontScroll);
+                scrolling.scrollToCoords(this.cm, 0, 0);
+            selection_updates.setSelection(this, m_selection.simpleSelection(top), misc.sel_dontScroll);
         }),
         replaceRange: function (code, from, to, origin) {
-            from = c.clipPos(this, from);
-            to = to ? c.clipPos(this, to) : from;
-            j.replaceRange(this, code, from, to, origin);
+            from = m_pos.clipPos(this, from);
+            to = to ? m_pos.clipPos(this, to) : from;
+            changes.replaceRange(this, code, from, to, origin);
         },
         getRange: function (from, to, lineSep) {
-            let lines = e.getBetween(this, c.clipPos(this, from), c.clipPos(this, to));
+            let lines = utils_line.getBetween(this, m_pos.clipPos(this, from), m_pos.clipPos(this, to));
             if (lineSep === false)
                 return lines;
             return lines.join(lineSep || this.lineSeparator());
@@ -6475,16 +6475,16 @@ define('skylark-codemirror/primitives/model/Doc',[
             return l && l.text;
         },
         getLineHandle: function (line) {
-            if (e.isLine(this, line))
-                return e.getLine(this, line);
+            if (utils_line.isLine(this, line))
+                return utils_line.getLine(this, line);
         },
         getLineNumber: function (line) {
-            return e.lineNo(line);
+            return utils_line.lineNo(line);
         },
         getLineHandleVisualStart: function (line) {
             if (typeof line == 'number')
-                line = e.getLine(this, line);
-            return d.visualLine(line);
+                line = utils_line.getLine(this, line);
+            return spans.visualLine(line);
         },
         lineCount: function () {
             return this.size;
@@ -6496,7 +6496,7 @@ define('skylark-codemirror/primitives/model/Doc',[
             return this.first + this.size - 1;
         },
         clipPos: function (pos) {
-            return c.clipPos(this, pos);
+            return m_pos.clipPos(this, pos);
         },
         getCursor: function (start) {
             let range = this.sel.primary(), pos;
@@ -6516,41 +6516,41 @@ define('skylark-codemirror/primitives/model/Doc',[
         somethingSelected: function () {
             return this.sel.somethingSelected();
         },
-        setCursor: a.docMethodOp(function (line, ch, options) {
-            r.setSimpleSelection(this, c.clipPos(this, typeof line == 'number' ? c.Pos(line, ch || 0) : line), null, options);
+        setCursor: operations.docMethodOp(function (line, ch, options) {
+            selection_updates.setSimpleSelection(this, m_pos.clipPos(this, typeof line == 'number' ? m_pos.Pos(line, ch || 0) : line), null, options);
         }),
-        setSelection: a.docMethodOp(function (anchor, head, options) {
-            r.setSimpleSelection(this, c.clipPos(this, anchor), c.clipPos(this, head || anchor), options);
+        setSelection: operations.docMethodOp(function (anchor, head, options) {
+            selection_updates.setSimpleSelection(this, m_pos.clipPos(this, anchor), m_pos.clipPos(this, head || anchor), options);
         }),
-        extendSelection: a.docMethodOp(function (head, other, options) {
-            r.extendSelection(this, c.clipPos(this, head), other && c.clipPos(this, other), options);
+        extendSelection: operations.docMethodOp(function (head, other, options) {
+            selection_updates.extendSelection(this, m_pos.clipPos(this, head), other && m_pos.clipPos(this, other), options);
         }),
-        extendSelections: a.docMethodOp(function (heads, options) {
-            r.extendSelections(this, c.clipPosArray(this, heads), options);
+        extendSelections: operations.docMethodOp(function (heads, options) {
+            selection_updates.extendSelections(this, m_pos.clipPosArray(this, heads), options);
         }),
-        extendSelectionsBy: a.docMethodOp(function (f, options) {
-            let heads = h.map(this.sel.ranges, f);
-            r.extendSelections(this, c.clipPosArray(this, heads), options);
+        extendSelectionsBy: operations.docMethodOp(function (f, options) {
+            let heads = misc.map(this.sel.ranges, f);
+            selection_updates.extendSelections(this, m_pos.clipPosArray(this, heads), options);
         }),
-        setSelections: a.docMethodOp(function (ranges, primary, options) {
+        setSelections: operations.docMethodOp(function (ranges, primary, options) {
             if (!ranges.length)
                 return;
             let out = [];
             for (let i = 0; i < ranges.length; i++)
-                out[i] = new q.Range(c.clipPos(this, ranges[i].anchor), c.clipPos(this, ranges[i].head));
+                out[i] = new m_selection.Range(m_pos.clipPos(this, ranges[i].anchor), m_pos.clipPos(this, ranges[i].head));
             if (primary == null)
                 primary = Math.min(ranges.length - 1, this.sel.primIndex);
-            r.setSelection(this, q.normalizeSelection(this.cm, out, primary), options);
+            selection_updates.setSelection(this, m_selection.normalizeSelection(this.cm, out, primary), options);
         }),
-        addSelection: a.docMethodOp(function (anchor, head, options) {
+        addSelection: operations.docMethodOp(function (anchor, head, options) {
             let ranges = this.sel.ranges.slice(0);
-            ranges.push(new q.Range(c.clipPos(this, anchor), c.clipPos(this, head || anchor)));
-            r.setSelection(this, q.normalizeSelection(this.cm, ranges, ranges.length - 1), options);
+            ranges.push(new m_selection.Range(m_pos.clipPos(this, anchor), m_pos.clipPos(this, head || anchor)));
+            selection_updates.setSelection(this, m_selection.normalizeSelection(this.cm, ranges, ranges.length - 1), options);
         }),
         getSelection: function (lineSep) {
             let ranges = this.sel.ranges, lines;
             for (let i = 0; i < ranges.length; i++) {
-                let sel = e.getBetween(this, ranges[i].from(), ranges[i].to());
+                let sel = utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
                 lines = lines ? lines.concat(sel) : sel;
             }
             if (lineSep === false)
@@ -6561,7 +6561,7 @@ define('skylark-codemirror/primitives/model/Doc',[
         getSelections: function (lineSep) {
             let parts = [], ranges = this.sel.ranges;
             for (let i = 0; i < ranges.length; i++) {
-                let sel = e.getBetween(this, ranges[i].from(), ranges[i].to());
+                let sel = utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
                 if (lineSep !== false)
                     sel = sel.join(lineSep || this.lineSeparator());
                 parts[i] = sel;
@@ -6574,7 +6574,7 @@ define('skylark-codemirror/primitives/model/Doc',[
                 dup[i] = code;
             this.replaceSelections(dup, collapse, origin || '+input');
         },
-        replaceSelections: a.docMethodOp(function (code, collapse, origin) {
+        replaceSelections: operations.docMethodOp(function (code, collapse, origin) {
             let changes = [], sel = this.sel;
             for (let i = 0; i < sel.ranges.length; i++) {
                 let range = sel.ranges[i];
@@ -6585,25 +6585,25 @@ define('skylark-codemirror/primitives/model/Doc',[
                     origin: origin
                 };
             }
-            let newSel = collapse && collapse != 'end' && k.computeReplacedSel(this, changes, collapse);
+            let newSel = collapse && collapse != 'end' && change_measurement.computeReplacedSel(this, changes, collapse);
             for (let i = changes.length - 1; i >= 0; i--)
-                j.makeChange(this, changes[i]);
+                changes.makeChange(this, changes[i]);
             if (newSel)
-                r.setSelectionReplaceHistory(this, newSel);
+                selection_updates.setSelectionReplaceHistory(this, newSel);
             else if (this.cm)
-                i.ensureCursorVisible(this.cm);
+                scrolling.ensureCursorVisible(this.cm);
         }),
-        undo: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'undo');
+        undo: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'undo');
         }),
-        redo: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'redo');
+        redo: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'redo');
         }),
-        undoSelection: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'undo', true);
+        undoSelection: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'undo', true);
         }),
-        redoSelection: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'redo', true);
+        redoSelection: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'redo', true);
         }),
         setExtending: function (val) {
             this.extend = val;
@@ -6625,7 +6625,7 @@ define('skylark-codemirror/primitives/model/Doc',[
             };
         },
         clearHistory: function () {
-            this.history = new n.History(this.history.maxGeneration);
+            this.history = new m_history.History(this.history.maxGeneration);
         },
         markClean: function () {
             this.cleanGeneration = this.changeGeneration(true);
@@ -6640,30 +6640,30 @@ define('skylark-codemirror/primitives/model/Doc',[
         },
         getHistory: function () {
             return {
-                done: n.copyHistoryArray(this.history.done),
-                undone: n.copyHistoryArray(this.history.undone)
+                done: m_history.copyHistoryArray(this.history.done),
+                undone: m_history.copyHistoryArray(this.history.undone)
             };
         },
         setHistory: function (histData) {
-            let hist = this.history = new n.History(this.history.maxGeneration);
-            hist.done = n.copyHistoryArray(histData.done.slice(0), null, true);
-            hist.undone = n.copyHistoryArray(histData.undone.slice(0), null, true);
+            let hist = this.history = new m_history.History(this.history.maxGeneration);
+            hist.done = m_history.copyHistoryArray(histData.done.slice(0), null, true);
+            hist.undone = m_history.copyHistoryArray(histData.undone.slice(0), null, true);
         },
-        setGutterMarker: a.docMethodOp(function (line, gutterID, value) {
-            return j.changeLine(this, line, 'gutter', line => {
+        setGutterMarker: operations.docMethodOp(function (line, gutterID, value) {
+            return changes.changeLine(this, line, 'gutter', line => {
                 let markers = line.gutterMarkers || (line.gutterMarkers = {});
                 markers[gutterID] = value;
-                if (!value && h.isEmpty(markers))
+                if (!value && misc.isEmpty(markers))
                     line.gutterMarkers = null;
                 return true;
             });
         }),
-        clearGutter: a.docMethodOp(function (gutterID) {
+        clearGutter: operations.docMethodOp(function (gutterID) {
             this.iter(line => {
                 if (line.gutterMarkers && line.gutterMarkers[gutterID]) {
-                    j.changeLine(this, line, 'gutter', () => {
+                    changes.changeLine(this, line, 'gutter', () => {
                         line.gutterMarkers[gutterID] = null;
-                        if (h.isEmpty(line.gutterMarkers))
+                        if (misc.isEmpty(line.gutterMarkers))
                             line.gutterMarkers = null;
                         return true;
                     });
@@ -6673,14 +6673,14 @@ define('skylark-codemirror/primitives/model/Doc',[
         lineInfo: function (line) {
             let n;
             if (typeof line == 'number') {
-                if (!e.isLine(this, line))
+                if (!utils_line.isLine(this, line))
                     return null;
                 n = line;
-                line = e.getLine(this, line);
+                line = utils_line.getLine(this, line);
                 if (!line)
                     return null;
             } else {
-                n = e.lineNo(line);
+                n = utils_line.lineNo(line);
                 if (n == null)
                     return null;
             }
@@ -6695,20 +6695,20 @@ define('skylark-codemirror/primitives/model/Doc',[
                 widgets: line.widgets
             };
         },
-        addLineClass: a.docMethodOp(function (handle, where, cls) {
-            return j.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
+        addLineClass: operations.docMethodOp(function (handle, where, cls) {
+            return changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
                 let prop = where == 'text' ? 'textClass' : where == 'background' ? 'bgClass' : where == 'gutter' ? 'gutterClass' : 'wrapClass';
                 if (!line[prop])
                     line[prop] = cls;
-                else if (f.classTest(cls).test(line[prop]))
+                else if (dom.classTest(cls).test(line[prop]))
                     return false;
                 else
                     line[prop] += ' ' + cls;
                 return true;
             });
         }),
-        removeLineClass: a.docMethodOp(function (handle, where, cls) {
-            return j.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
+        removeLineClass: operations.docMethodOp(function (handle, where, cls) {
+            return changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
                 let prop = where == 'text' ? 'textClass' : where == 'background' ? 'bgClass' : where == 'gutter' ? 'gutterClass' : 'wrapClass';
                 let cur = line[prop];
                 if (!cur)
@@ -6716,7 +6716,7 @@ define('skylark-codemirror/primitives/model/Doc',[
                 else if (cls == null)
                     line[prop] = null;
                 else {
-                    let found = cur.match(f.classTest(cls));
+                    let found = cur.match(dom.classTest(cls));
                     if (!found)
                         return false;
                     let end = found.index + found[0].length;
@@ -6725,14 +6725,14 @@ define('skylark-codemirror/primitives/model/Doc',[
                 return true;
             });
         }),
-        addLineWidget: a.docMethodOp(function (handle, node, options) {
-            return o.addLineWidget(this, handle, node, options);
+        addLineWidget: operations.docMethodOp(function (handle, node, options) {
+            return line_widget.addLineWidget(this, handle, node, options);
         }),
         removeLineWidget: function (widget) {
             widget.clear();
         },
         markText: function (from, to, options) {
-            return p.markText(this, c.clipPos(this, from), c.clipPos(this, to), options, options && options.type || 'range');
+            return mark_text.markText(this, m_pos.clipPos(this, from), m_pos.clipPos(this, to), options, options && options.type || 'range');
         },
         setBookmark: function (pos, options) {
             let realOpts = {
@@ -6742,12 +6742,12 @@ define('skylark-codemirror/primitives/model/Doc',[
                 shared: options && options.shared,
                 handleMouseEvents: options && options.handleMouseEvents
             };
-            pos = c.clipPos(this, pos);
-            return p.markText(this, pos, pos, realOpts, 'bookmark');
+            pos = m_pos.clipPos(this, pos);
+            return mark_text.markText(this, pos, pos, realOpts, 'bookmark');
         },
         findMarksAt: function (pos) {
-            pos = c.clipPos(this, pos);
-            let markers = [], spans = e.getLine(this, pos.line).markedSpans;
+            pos = m_pos.clipPos(this, pos);
+            let markers = [], spans = utils_line.getLine(this, pos.line).markedSpans;
             if (spans)
                 for (let i = 0; i < spans.length; ++i) {
                     let span = spans[i];
@@ -6757,8 +6757,8 @@ define('skylark-codemirror/primitives/model/Doc',[
             return markers;
         },
         findMarks: function (from, to, filter) {
-            from = c.clipPos(this, from);
-            to = c.clipPos(this, to);
+            from = m_pos.clipPos(this, from);
+            to = m_pos.clipPos(this, to);
             let found = [], lineNo = from.line;
             this.iter(from.line, to.line + 1, line => {
                 let spans = line.markedSpans;
@@ -6794,10 +6794,10 @@ define('skylark-codemirror/primitives/model/Doc',[
                 off -= sz;
                 ++lineNo;
             });
-            return c.clipPos(this, c.Pos(lineNo, ch));
+            return m_pos.clipPos(this, m_pos.Pos(lineNo, ch));
         },
         indexFromPos: function (coords) {
-            coords = c.clipPos(this, coords);
+            coords = m_pos.clipPos(this, coords);
             let index = coords.ch;
             if (coords.line < this.first || coords.ch < 0)
                 return 0;
@@ -6808,7 +6808,7 @@ define('skylark-codemirror/primitives/model/Doc',[
             return index;
         },
         copy: function (copyHistory) {
-            let doc = new Doc(e.getLines(this, this.first, this.first + this.size), this.modeOption, this.first, this.lineSep, this.direction);
+            let doc = new Doc(utils_line.getLines(this, this.first, this.first + this.size), this.modeOption, this.first, this.lineSep, this.direction);
             doc.scrollTop = this.scrollTop;
             doc.scrollLeft = this.scrollLeft;
             doc.sel = this.sel;
@@ -6827,7 +6827,7 @@ define('skylark-codemirror/primitives/model/Doc',[
                 from = options.from;
             if (options.to != null && options.to < to)
                 to = options.to;
-            let copy = new Doc(e.getLines(this, from, to), options.mode || this.modeOption, from, this.lineSep, this.direction);
+            let copy = new Doc(utils_line.getLines(this, from, to), options.mode || this.modeOption, from, this.lineSep, this.direction);
             if (options.sharedHist)
                 copy.history = this.history;
             (this.linked || (this.linked = [])).push({
@@ -6839,7 +6839,7 @@ define('skylark-codemirror/primitives/model/Doc',[
                     isParent: true,
                     sharedHist: options.sharedHist
                 }];
-            p.copySharedMarkers(copy, p.findSharedMarkers(this));
+            line_widget.copySharedMarkers(copy, line_widget.findSharedMarkers(this));
             return copy;
         },
         unlinkDoc: function (other) {
@@ -6853,19 +6853,19 @@ define('skylark-codemirror/primitives/model/Doc',[
                         continue;
                     this.linked.splice(i, 1);
                     other.unlinkDoc(this);
-                    p.detachSharedMarkers(p.findSharedMarkers(this));
+                    line_widget.detachSharedMarkers(line_widget.findSharedMarkers(this));
                     break;
                 }
             if (other.history == this.history) {
                 let splitIds = [other.id];
-                m.linkedDocs(other, doc => splitIds.push(doc.id), true);
-                other.history = new n.History(null);
-                other.history.done = n.copyHistoryArray(this.history.done, splitIds);
-                other.history.undone = n.copyHistoryArray(this.history.undone, splitIds);
+                document_data.linkedDocs(other, doc => splitIds.push(doc.id), true);
+                other.history = new m_history.History(null);
+                other.history.done = m_history.copyHistoryArray(this.history.done, splitIds);
+                other.history.undone = m_history.copyHistoryArray(this.history.undone, splitIds);
             }
         },
         iterLinkedDocs: function (f) {
-            m.linkedDocs(this, f);
+            document_data.linkedDocs(this, f);
         },
         getMode: function () {
             return this.mode;
@@ -6876,12 +6876,12 @@ define('skylark-codemirror/primitives/model/Doc',[
         splitLines: function (str) {
             if (this.lineSep)
                 return str.split(this.lineSep);
-            return g.splitLinesAuto(str);
+            return feature_detection.splitLinesAuto(str);
         },
         lineSeparator: function () {
             return this.lineSep || '\n';
         },
-        setDirection: a.docMethodOp(function (dir) {
+        setDirection: operations.docMethodOp(function (dir) {
             if (dir != 'rtl')
                 dir = 'ltr';
             if (dir == this.direction)
@@ -6889,7 +6889,7 @@ define('skylark-codemirror/primitives/model/Doc',[
             this.direction = dir;
             this.iter(line => line.order = null);
             if (this.cm)
-                m.directionChanged(this.cm);
+                document_data.directionChanged(this.cm);
         })
     });
     Doc.prototype.eachLine = Doc.prototype.iter;

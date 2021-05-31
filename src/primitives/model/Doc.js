@@ -17,7 +17,7 @@ define([
     './mark_text',
     './selection',
     './selection_updates'
-], function (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r) {
+], function (operations, line_data, m_pos, spans, utils_line, dom, feature_detection, misc, scrolling, changes, change_measurement, chunk, document_data, m_history, line_widget, mark_text, m_selection, selection_updates) {
     'use strict';
     let nextDocId = 0;
     let Doc = function (text, mode, firstLine, lineSep, direction) {
@@ -25,15 +25,15 @@ define([
             return new Doc(text, mode, firstLine, lineSep, direction);
         if (firstLine == null)
             firstLine = 0;
-        l.BranchChunk.call(this, [new l.LeafChunk([new b.Line('', null)])]);
+        chunk.BranchChunk.call(this, [new chunk.LeafChunk([new line_data.Line('', null)])]);
         this.first = firstLine;
         this.scrollTop = this.scrollLeft = 0;
         this.cantEdit = false;
         this.cleanGeneration = 1;
         this.modeFrontier = this.highlightFrontier = firstLine;
-        let start = c.Pos(firstLine, 0);
-        this.sel = q.simpleSelection(start);
-        this.history = new n.History(null);
+        let start = m_pos.Pos(firstLine, 0);
+        this.sel = m_selection.simpleSelection(start);
+        this.history = new m_history.History(null);
         this.id = ++nextDocId;
         this.modeOption = mode;
         this.lineSep = lineSep;
@@ -41,14 +41,14 @@ define([
         this.extend = false;
         if (typeof text == 'string')
             text = this.splitLines(text);
-        m.updateDoc(this, {
+        document_data.updateDoc(this, {
             from: start,
             to: start,
             text: text
         });
-        r.setSelection(this, q.simpleSelection(start), h.sel_dontScroll);
+        selection_updates.setSelection(this, m_selection.simpleSelection(start), misc.sel_dontScroll);
     };
-    Doc.prototype = h.createObj(l.BranchChunk.prototype, {
+    Doc.prototype = misc.createObj(chunk.BranchChunk.prototype, {
         constructor: Doc,
         iter: function (from, to, op) {
             if (op)
@@ -66,31 +66,31 @@ define([
             this.removeInner(at - this.first, n);
         },
         getValue: function (lineSep) {
-            let lines = e.getLines(this, this.first, this.first + this.size);
+            let lines = utils_line.getLines(this, this.first, this.first + this.size);
             if (lineSep === false)
                 return lines;
             return lines.join(lineSep || this.lineSeparator());
         },
-        setValue: a.docMethodOp(function (code) {
-            let top = c.Pos(this.first, 0), last = this.first + this.size - 1;
-            j.makeChange(this, {
+        setValue: operations.docMethodOp(function (code) {
+            let top = m_pos.Pos(this.first, 0), last = this.first + this.size - 1;
+            changes.makeChange(this, {
                 from: top,
-                to: c.Pos(last, e.getLine(this, last).text.length),
+                to: m_pos.Pos(last, utils_line.getLine(this, last).text.length),
                 text: this.splitLines(code),
                 origin: 'setValue',
                 full: true
             }, true);
             if (this.cm)
-                i.scrollToCoords(this.cm, 0, 0);
-            r.setSelection(this, q.simpleSelection(top), h.sel_dontScroll);
+                scrolling.scrollToCoords(this.cm, 0, 0);
+            selection_updates.setSelection(this, m_selection.simpleSelection(top), misc.sel_dontScroll);
         }),
         replaceRange: function (code, from, to, origin) {
-            from = c.clipPos(this, from);
-            to = to ? c.clipPos(this, to) : from;
-            j.replaceRange(this, code, from, to, origin);
+            from = m_pos.clipPos(this, from);
+            to = to ? m_pos.clipPos(this, to) : from;
+            changes.replaceRange(this, code, from, to, origin);
         },
         getRange: function (from, to, lineSep) {
-            let lines = e.getBetween(this, c.clipPos(this, from), c.clipPos(this, to));
+            let lines = utils_line.getBetween(this, m_pos.clipPos(this, from), m_pos.clipPos(this, to));
             if (lineSep === false)
                 return lines;
             return lines.join(lineSep || this.lineSeparator());
@@ -100,16 +100,16 @@ define([
             return l && l.text;
         },
         getLineHandle: function (line) {
-            if (e.isLine(this, line))
-                return e.getLine(this, line);
+            if (utils_line.isLine(this, line))
+                return utils_line.getLine(this, line);
         },
         getLineNumber: function (line) {
-            return e.lineNo(line);
+            return utils_line.lineNo(line);
         },
         getLineHandleVisualStart: function (line) {
             if (typeof line == 'number')
-                line = e.getLine(this, line);
-            return d.visualLine(line);
+                line = utils_line.getLine(this, line);
+            return spans.visualLine(line);
         },
         lineCount: function () {
             return this.size;
@@ -121,7 +121,7 @@ define([
             return this.first + this.size - 1;
         },
         clipPos: function (pos) {
-            return c.clipPos(this, pos);
+            return m_pos.clipPos(this, pos);
         },
         getCursor: function (start) {
             let range = this.sel.primary(), pos;
@@ -141,41 +141,41 @@ define([
         somethingSelected: function () {
             return this.sel.somethingSelected();
         },
-        setCursor: a.docMethodOp(function (line, ch, options) {
-            r.setSimpleSelection(this, c.clipPos(this, typeof line == 'number' ? c.Pos(line, ch || 0) : line), null, options);
+        setCursor: operations.docMethodOp(function (line, ch, options) {
+            selection_updates.setSimpleSelection(this, m_pos.clipPos(this, typeof line == 'number' ? m_pos.Pos(line, ch || 0) : line), null, options);
         }),
-        setSelection: a.docMethodOp(function (anchor, head, options) {
-            r.setSimpleSelection(this, c.clipPos(this, anchor), c.clipPos(this, head || anchor), options);
+        setSelection: operations.docMethodOp(function (anchor, head, options) {
+            selection_updates.setSimpleSelection(this, m_pos.clipPos(this, anchor), m_pos.clipPos(this, head || anchor), options);
         }),
-        extendSelection: a.docMethodOp(function (head, other, options) {
-            r.extendSelection(this, c.clipPos(this, head), other && c.clipPos(this, other), options);
+        extendSelection: operations.docMethodOp(function (head, other, options) {
+            selection_updates.extendSelection(this, m_pos.clipPos(this, head), other && m_pos.clipPos(this, other), options);
         }),
-        extendSelections: a.docMethodOp(function (heads, options) {
-            r.extendSelections(this, c.clipPosArray(this, heads), options);
+        extendSelections: operations.docMethodOp(function (heads, options) {
+            selection_updates.extendSelections(this, m_pos.clipPosArray(this, heads), options);
         }),
-        extendSelectionsBy: a.docMethodOp(function (f, options) {
-            let heads = h.map(this.sel.ranges, f);
-            r.extendSelections(this, c.clipPosArray(this, heads), options);
+        extendSelectionsBy: operations.docMethodOp(function (f, options) {
+            let heads = misc.map(this.sel.ranges, f);
+            selection_updates.extendSelections(this, m_pos.clipPosArray(this, heads), options);
         }),
-        setSelections: a.docMethodOp(function (ranges, primary, options) {
+        setSelections: operations.docMethodOp(function (ranges, primary, options) {
             if (!ranges.length)
                 return;
             let out = [];
             for (let i = 0; i < ranges.length; i++)
-                out[i] = new q.Range(c.clipPos(this, ranges[i].anchor), c.clipPos(this, ranges[i].head));
+                out[i] = new m_selection.Range(m_pos.clipPos(this, ranges[i].anchor), m_pos.clipPos(this, ranges[i].head));
             if (primary == null)
                 primary = Math.min(ranges.length - 1, this.sel.primIndex);
-            r.setSelection(this, q.normalizeSelection(this.cm, out, primary), options);
+            selection_updates.setSelection(this, m_selection.normalizeSelection(this.cm, out, primary), options);
         }),
-        addSelection: a.docMethodOp(function (anchor, head, options) {
+        addSelection: operations.docMethodOp(function (anchor, head, options) {
             let ranges = this.sel.ranges.slice(0);
-            ranges.push(new q.Range(c.clipPos(this, anchor), c.clipPos(this, head || anchor)));
-            r.setSelection(this, q.normalizeSelection(this.cm, ranges, ranges.length - 1), options);
+            ranges.push(new m_selection.Range(m_pos.clipPos(this, anchor), m_pos.clipPos(this, head || anchor)));
+            selection_updates.setSelection(this, m_selection.normalizeSelection(this.cm, ranges, ranges.length - 1), options);
         }),
         getSelection: function (lineSep) {
             let ranges = this.sel.ranges, lines;
             for (let i = 0; i < ranges.length; i++) {
-                let sel = e.getBetween(this, ranges[i].from(), ranges[i].to());
+                let sel = utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
                 lines = lines ? lines.concat(sel) : sel;
             }
             if (lineSep === false)
@@ -186,7 +186,7 @@ define([
         getSelections: function (lineSep) {
             let parts = [], ranges = this.sel.ranges;
             for (let i = 0; i < ranges.length; i++) {
-                let sel = e.getBetween(this, ranges[i].from(), ranges[i].to());
+                let sel = utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
                 if (lineSep !== false)
                     sel = sel.join(lineSep || this.lineSeparator());
                 parts[i] = sel;
@@ -199,7 +199,7 @@ define([
                 dup[i] = code;
             this.replaceSelections(dup, collapse, origin || '+input');
         },
-        replaceSelections: a.docMethodOp(function (code, collapse, origin) {
+        replaceSelections: operations.docMethodOp(function (code, collapse, origin) {
             let changes = [], sel = this.sel;
             for (let i = 0; i < sel.ranges.length; i++) {
                 let range = sel.ranges[i];
@@ -210,25 +210,25 @@ define([
                     origin: origin
                 };
             }
-            let newSel = collapse && collapse != 'end' && k.computeReplacedSel(this, changes, collapse);
+            let newSel = collapse && collapse != 'end' && change_measurement.computeReplacedSel(this, changes, collapse);
             for (let i = changes.length - 1; i >= 0; i--)
-                j.makeChange(this, changes[i]);
+                changes.makeChange(this, changes[i]);
             if (newSel)
-                r.setSelectionReplaceHistory(this, newSel);
+                selection_updates.setSelectionReplaceHistory(this, newSel);
             else if (this.cm)
-                i.ensureCursorVisible(this.cm);
+                scrolling.ensureCursorVisible(this.cm);
         }),
-        undo: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'undo');
+        undo: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'undo');
         }),
-        redo: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'redo');
+        redo: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'redo');
         }),
-        undoSelection: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'undo', true);
+        undoSelection: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'undo', true);
         }),
-        redoSelection: a.docMethodOp(function () {
-            j.makeChangeFromHistory(this, 'redo', true);
+        redoSelection: operations.docMethodOp(function () {
+            changes.makeChangeFromHistory(this, 'redo', true);
         }),
         setExtending: function (val) {
             this.extend = val;
@@ -250,7 +250,7 @@ define([
             };
         },
         clearHistory: function () {
-            this.history = new n.History(this.history.maxGeneration);
+            this.history = new m_history.History(this.history.maxGeneration);
         },
         markClean: function () {
             this.cleanGeneration = this.changeGeneration(true);
@@ -265,30 +265,30 @@ define([
         },
         getHistory: function () {
             return {
-                done: n.copyHistoryArray(this.history.done),
-                undone: n.copyHistoryArray(this.history.undone)
+                done: m_history.copyHistoryArray(this.history.done),
+                undone: m_history.copyHistoryArray(this.history.undone)
             };
         },
         setHistory: function (histData) {
-            let hist = this.history = new n.History(this.history.maxGeneration);
-            hist.done = n.copyHistoryArray(histData.done.slice(0), null, true);
-            hist.undone = n.copyHistoryArray(histData.undone.slice(0), null, true);
+            let hist = this.history = new m_history.History(this.history.maxGeneration);
+            hist.done = m_history.copyHistoryArray(histData.done.slice(0), null, true);
+            hist.undone = m_history.copyHistoryArray(histData.undone.slice(0), null, true);
         },
-        setGutterMarker: a.docMethodOp(function (line, gutterID, value) {
-            return j.changeLine(this, line, 'gutter', line => {
+        setGutterMarker: operations.docMethodOp(function (line, gutterID, value) {
+            return changes.changeLine(this, line, 'gutter', line => {
                 let markers = line.gutterMarkers || (line.gutterMarkers = {});
                 markers[gutterID] = value;
-                if (!value && h.isEmpty(markers))
+                if (!value && misc.isEmpty(markers))
                     line.gutterMarkers = null;
                 return true;
             });
         }),
-        clearGutter: a.docMethodOp(function (gutterID) {
+        clearGutter: operations.docMethodOp(function (gutterID) {
             this.iter(line => {
                 if (line.gutterMarkers && line.gutterMarkers[gutterID]) {
-                    j.changeLine(this, line, 'gutter', () => {
+                    changes.changeLine(this, line, 'gutter', () => {
                         line.gutterMarkers[gutterID] = null;
-                        if (h.isEmpty(line.gutterMarkers))
+                        if (misc.isEmpty(line.gutterMarkers))
                             line.gutterMarkers = null;
                         return true;
                     });
@@ -298,14 +298,14 @@ define([
         lineInfo: function (line) {
             let n;
             if (typeof line == 'number') {
-                if (!e.isLine(this, line))
+                if (!utils_line.isLine(this, line))
                     return null;
                 n = line;
-                line = e.getLine(this, line);
+                line = utils_line.getLine(this, line);
                 if (!line)
                     return null;
             } else {
-                n = e.lineNo(line);
+                n = utils_line.lineNo(line);
                 if (n == null)
                     return null;
             }
@@ -320,20 +320,20 @@ define([
                 widgets: line.widgets
             };
         },
-        addLineClass: a.docMethodOp(function (handle, where, cls) {
-            return j.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
+        addLineClass: operations.docMethodOp(function (handle, where, cls) {
+            return changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
                 let prop = where == 'text' ? 'textClass' : where == 'background' ? 'bgClass' : where == 'gutter' ? 'gutterClass' : 'wrapClass';
                 if (!line[prop])
                     line[prop] = cls;
-                else if (f.classTest(cls).test(line[prop]))
+                else if (dom.classTest(cls).test(line[prop]))
                     return false;
                 else
                     line[prop] += ' ' + cls;
                 return true;
             });
         }),
-        removeLineClass: a.docMethodOp(function (handle, where, cls) {
-            return j.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
+        removeLineClass: operations.docMethodOp(function (handle, where, cls) {
+            return changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
                 let prop = where == 'text' ? 'textClass' : where == 'background' ? 'bgClass' : where == 'gutter' ? 'gutterClass' : 'wrapClass';
                 let cur = line[prop];
                 if (!cur)
@@ -341,7 +341,7 @@ define([
                 else if (cls == null)
                     line[prop] = null;
                 else {
-                    let found = cur.match(f.classTest(cls));
+                    let found = cur.match(dom.classTest(cls));
                     if (!found)
                         return false;
                     let end = found.index + found[0].length;
@@ -350,14 +350,14 @@ define([
                 return true;
             });
         }),
-        addLineWidget: a.docMethodOp(function (handle, node, options) {
-            return o.addLineWidget(this, handle, node, options);
+        addLineWidget: operations.docMethodOp(function (handle, node, options) {
+            return line_widget.addLineWidget(this, handle, node, options);
         }),
         removeLineWidget: function (widget) {
             widget.clear();
         },
         markText: function (from, to, options) {
-            return p.markText(this, c.clipPos(this, from), c.clipPos(this, to), options, options && options.type || 'range');
+            return mark_text.markText(this, m_pos.clipPos(this, from), m_pos.clipPos(this, to), options, options && options.type || 'range');
         },
         setBookmark: function (pos, options) {
             let realOpts = {
@@ -367,12 +367,12 @@ define([
                 shared: options && options.shared,
                 handleMouseEvents: options && options.handleMouseEvents
             };
-            pos = c.clipPos(this, pos);
-            return p.markText(this, pos, pos, realOpts, 'bookmark');
+            pos = m_pos.clipPos(this, pos);
+            return mark_text.markText(this, pos, pos, realOpts, 'bookmark');
         },
         findMarksAt: function (pos) {
-            pos = c.clipPos(this, pos);
-            let markers = [], spans = e.getLine(this, pos.line).markedSpans;
+            pos = m_pos.clipPos(this, pos);
+            let markers = [], spans = utils_line.getLine(this, pos.line).markedSpans;
             if (spans)
                 for (let i = 0; i < spans.length; ++i) {
                     let span = spans[i];
@@ -382,8 +382,8 @@ define([
             return markers;
         },
         findMarks: function (from, to, filter) {
-            from = c.clipPos(this, from);
-            to = c.clipPos(this, to);
+            from = m_pos.clipPos(this, from);
+            to = m_pos.clipPos(this, to);
             let found = [], lineNo = from.line;
             this.iter(from.line, to.line + 1, line => {
                 let spans = line.markedSpans;
@@ -419,10 +419,10 @@ define([
                 off -= sz;
                 ++lineNo;
             });
-            return c.clipPos(this, c.Pos(lineNo, ch));
+            return m_pos.clipPos(this, m_pos.Pos(lineNo, ch));
         },
         indexFromPos: function (coords) {
-            coords = c.clipPos(this, coords);
+            coords = m_pos.clipPos(this, coords);
             let index = coords.ch;
             if (coords.line < this.first || coords.ch < 0)
                 return 0;
@@ -433,7 +433,7 @@ define([
             return index;
         },
         copy: function (copyHistory) {
-            let doc = new Doc(e.getLines(this, this.first, this.first + this.size), this.modeOption, this.first, this.lineSep, this.direction);
+            let doc = new Doc(utils_line.getLines(this, this.first, this.first + this.size), this.modeOption, this.first, this.lineSep, this.direction);
             doc.scrollTop = this.scrollTop;
             doc.scrollLeft = this.scrollLeft;
             doc.sel = this.sel;
@@ -452,7 +452,7 @@ define([
                 from = options.from;
             if (options.to != null && options.to < to)
                 to = options.to;
-            let copy = new Doc(e.getLines(this, from, to), options.mode || this.modeOption, from, this.lineSep, this.direction);
+            let copy = new Doc(utils_line.getLines(this, from, to), options.mode || this.modeOption, from, this.lineSep, this.direction);
             if (options.sharedHist)
                 copy.history = this.history;
             (this.linked || (this.linked = [])).push({
@@ -464,7 +464,7 @@ define([
                     isParent: true,
                     sharedHist: options.sharedHist
                 }];
-            p.copySharedMarkers(copy, p.findSharedMarkers(this));
+            line_widget.copySharedMarkers(copy, line_widget.findSharedMarkers(this));
             return copy;
         },
         unlinkDoc: function (other) {
@@ -478,19 +478,19 @@ define([
                         continue;
                     this.linked.splice(i, 1);
                     other.unlinkDoc(this);
-                    p.detachSharedMarkers(p.findSharedMarkers(this));
+                    line_widget.detachSharedMarkers(line_widget.findSharedMarkers(this));
                     break;
                 }
             if (other.history == this.history) {
                 let splitIds = [other.id];
-                m.linkedDocs(other, doc => splitIds.push(doc.id), true);
-                other.history = new n.History(null);
-                other.history.done = n.copyHistoryArray(this.history.done, splitIds);
-                other.history.undone = n.copyHistoryArray(this.history.undone, splitIds);
+                document_data.linkedDocs(other, doc => splitIds.push(doc.id), true);
+                other.history = new m_history.History(null);
+                other.history.done = m_history.copyHistoryArray(this.history.done, splitIds);
+                other.history.undone = m_history.copyHistoryArray(this.history.undone, splitIds);
             }
         },
         iterLinkedDocs: function (f) {
-            m.linkedDocs(this, f);
+            document_data.linkedDocs(this, f);
         },
         getMode: function () {
             return this.mode;
@@ -501,12 +501,12 @@ define([
         splitLines: function (str) {
             if (this.lineSep)
                 return str.split(this.lineSep);
-            return g.splitLinesAuto(str);
+            return feature_detection.splitLinesAuto(str);
         },
         lineSeparator: function () {
             return this.lineSep || '\n';
         },
-        setDirection: a.docMethodOp(function (dir) {
+        setDirection: operations.docMethodOp(function (dir) {
             if (dir != 'rtl')
                 dir = 'ltr';
             if (dir == this.direction)
@@ -514,7 +514,7 @@ define([
             this.direction = dir;
             this.iter(line => line.order = null);
             if (this.cm)
-                m.directionChanged(this.cm);
+                document_data.directionChanged(this.cm);
         })
     });
     Doc.prototype.eachLine = Doc.prototype.iter;

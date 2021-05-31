@@ -5,7 +5,7 @@ define([
     '../measurement/position_measurement',
     '../util/bidi',
     '../util/dom'
-], function (a, b, c, d, e, f) {
+], function (m_pos, spans, utils_line, position_measurement, bidi, dom) {
     'use strict';
     function updateSelection(cm) {
         cm.display.input.showSelection(cm.display.input.prepareSelection());
@@ -29,13 +29,13 @@ define([
         return result;
     }
     function drawSelectionCursor(cm, head, output) {
-        let pos = d.cursorCoords(cm, head, 'div', null, null, !cm.options.singleCursorHeightPerLine);
-        let cursor = output.appendChild(f.elt('div', '\xA0', 'CodeMirror-cursor'));
+        let pos = position_measurement.cursorCoords(cm, head, 'div', null, null, !cm.options.singleCursorHeightPerLine);
+        let cursor = output.appendChild(dom.elt('div', '\xA0', 'CodeMirror-cursor'));
         cursor.style.left = pos.left + 'px';
         cursor.style.top = pos.top + 'px';
         cursor.style.height = Math.max(0, pos.bottom - pos.top) * cm.options.cursorHeight + 'px';
         if (pos.other) {
-            let otherCursor = output.appendChild(f.elt('div', '\xA0', 'CodeMirror-cursor CodeMirror-secondarycursor'));
+            let otherCursor = output.appendChild(dom.elt('div', '\xA0', 'CodeMirror-cursor CodeMirror-secondarycursor'));
             otherCursor.style.display = '';
             otherCursor.style.left = pos.other.left + 'px';
             otherCursor.style.top = pos.other.top + 'px';
@@ -48,33 +48,33 @@ define([
     function drawSelectionRange(cm, range, output) {
         let display = cm.display, doc = cm.doc;
         let fragment = document.createDocumentFragment();
-        let padding = d.paddingH(cm.display), leftSide = padding.left;
-        let rightSide = Math.max(display.sizerWidth, d.displayWidth(cm) - display.sizer.offsetLeft) - padding.right;
+        let padding = position_measurement.paddingH(cm.display), leftSide = padding.left;
+        let rightSide = Math.max(display.sizerWidth, position_measurement.displayWidth(cm) - display.sizer.offsetLeft) - padding.right;
         let docLTR = doc.direction == 'ltr';
         function add(left, top, width, bottom) {
             if (top < 0)
                 top = 0;
             top = Math.round(top);
             bottom = Math.round(bottom);
-            fragment.appendChild(f.elt('div', null, 'CodeMirror-selected', `position: absolute; left: ${ left }px;
+            fragment.appendChild(dom.elt('div', null, 'CodeMirror-selected', `position: absolute; left: ${ left }px;
                              top: ${ top }px; width: ${ width == null ? rightSide - left : width }px;
                              height: ${ bottom - top }px`));
         }
         function drawForLine(line, fromArg, toArg) {
-            let lineObj = c.getLine(doc, line);
+            let lineObj = utils_line.getLine(doc, line);
             let lineLen = lineObj.text.length;
             let start, end;
             function coords(ch, bias) {
-                return d.charCoords(cm, a.Pos(line, ch), 'div', lineObj, bias);
+                return position_measurement.charCoords(cm, m_pos.Pos(line, ch), 'div', lineObj, bias);
             }
             function wrapX(pos, dir, side) {
-                let extent = d.wrappedLineExtentChar(cm, lineObj, null, pos);
+                let extent = position_measurement.wrappedLineExtentChar(cm, lineObj, null, pos);
                 let prop = dir == 'ltr' == (side == 'after') ? 'left' : 'right';
                 let ch = side == 'after' ? extent.begin : extent.end - (/\s/.test(lineObj.text.charAt(extent.end - 1)) ? 2 : 1);
                 return coords(ch, prop)[prop];
             }
-            let order = e.getOrder(lineObj, doc.direction);
-            e.iterateBidiSections(order, fromArg || 0, toArg == null ? lineLen : toArg, (from, to, dir, i) => {
+            let order = bidi.getOrder(lineObj, doc.direction);
+            bidi.iterateBidiSections(order, fromArg || 0, toArg == null ? lineLen : toArg, (from, to, dir, i) => {
                 let ltr = dir == 'ltr';
                 let fromPos = coords(from, ltr ? 'left' : 'right');
                 let toPos = coords(to - 1, ltr ? 'right' : 'left');
@@ -122,8 +122,8 @@ define([
         if (sFrom.line == sTo.line) {
             drawForLine(sFrom.line, sFrom.ch, sTo.ch);
         } else {
-            let fromLine = c.getLine(doc, sFrom.line), toLine = c.getLine(doc, sTo.line);
-            let singleVLine = b.visualLine(fromLine) == b.visualLine(toLine);
+            let fromLine = utils_line.getLine(doc, sFrom.line), toLine = utils_line.getLine(doc, sTo.line);
+            let singleVLine = spans.visualLine(fromLine) == spans.visualLine(toLine);
             let leftEnd = drawForLine(sFrom.line, sFrom.ch, singleVLine ? fromLine.text.length + 1 : null).end;
             let rightStart = drawForLine(sTo.line, singleVLine ? 0 : null, sTo.ch).start;
             if (singleVLine) {
