@@ -5013,7 +5013,7 @@ define('skylark-codemirror/primitives/model/document_data',[
     '../util/dom',
     '../util/misc',
     '../util/operation_group'
-], function (a, b, c, d, e, f, g, h, i, j) {
+], function (mode_state, operations, view_tracking, line_data, e, f, g, h, i, j) {
     'use strict';
     function isWholeLineUpdate(doc, change) {
         return change.from.ch == 0 && change.to.ch == 0 && i.lst(change.text) == '' && (!doc.cm || doc.cm.options.wholeLineUpdateBefore);
@@ -5023,13 +5023,13 @@ define('skylark-codemirror/primitives/model/document_data',[
             return markedSpans ? markedSpans[n] : null;
         }
         function update(line, text, spans) {
-            d.updateLine(line, text, spans, estimateHeight);
+            line_data.updateLine(line, text, spans, estimateHeight);
             j.signalLater(line, 'change', line, change);
         }
         function linesFor(start, end) {
             let result = [];
             for (let i = start; i < end; ++i)
-                result.push(new d.Line(text[i], spansFor(i), estimateHeight));
+                result.push(new line_data.Line(text[i], spansFor(i), estimateHeight));
             return result;
         }
         let from = change.from, to = change.to, text = change.text;
@@ -5050,7 +5050,7 @@ define('skylark-codemirror/primitives/model/document_data',[
                 update(firstLine, firstLine.text.slice(0, from.ch) + lastText + firstLine.text.slice(to.ch), lastSpans);
             } else {
                 let added = linesFor(1, text.length - 1);
-                added.push(new d.Line(lastText + firstLine.text.slice(to.ch), lastSpans, estimateHeight));
+                added.push(new line_data.Line(lastText + firstLine.text.slice(to.ch), lastSpans, estimateHeight));
                 update(firstLine, firstLine.text.slice(0, from.ch) + text[0], spansFor(0));
                 doc.insert(from.line + 1, added);
             }
@@ -5089,21 +5089,21 @@ define('skylark-codemirror/primitives/model/document_data',[
         cm.doc = doc;
         doc.cm = cm;
         g.estimateLineHeights(cm);
-        a.loadMode(cm);
+        mode_state.loadMode(cm);
         setDirectionClass(cm);
         if (!cm.options.lineWrapping)
             e.findMaxLine(cm);
         cm.options.mode = doc.modeOption;
-        c.regChange(cm);
+        view_tracking.regChange(cm);
     }
     function setDirectionClass(cm) {
         ;
         (cm.doc.direction == 'rtl' ? h.addClass : h.rmClass)(cm.display.lineDiv, 'CodeMirror-rtl');
     }
     function directionChanged(cm) {
-        b.runInOp(cm, () => {
+        operations.runInOp(cm, () => {
             setDirectionClass(cm);
-            c.regChange(cm);
+            view_tracking.regChange(cm);
         });
     }
     return {
