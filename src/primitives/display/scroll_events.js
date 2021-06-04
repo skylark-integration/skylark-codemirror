@@ -3,16 +3,16 @@ define([
     '../util/event',
     './update_display',
     './scrolling'
-], function (a, b, c, d) {
+], function (m_browser, m_event, m_update_display, m_scrolling) {
     'use strict';
     let wheelSamples = 0, wheelPixelsPerUnit = null;
-    if (a.ie)
+    if (m_browser.ie)
         wheelPixelsPerUnit = -0.53;
-    else if (a.gecko)
+    else if (m_browser.gecko)
         wheelPixelsPerUnit = 15;
-    else if (a.chrome)
+    else if (m_browser.chrome)
         wheelPixelsPerUnit = -0.7;
-    else if (a.safari)
+    else if (m_browser.safari)
         wheelPixelsPerUnit = -1 / 3;
     function wheelEventDelta(e) {
         let dx = e.wheelDeltaX, dy = e.wheelDeltaY;
@@ -40,7 +40,7 @@ define([
         let canScrollY = scroll.scrollHeight > scroll.clientHeight;
         if (!(dx && canScrollX || dy && canScrollY))
             return;
-        if (dy && a.mac && a.webkit) {
+        if (dy && m_browser.mac && m_browser.webkit) {
             outer:
                 for (let cur = e.target, view = display.view; cur != scroll; cur = cur.parentNode) {
                     for (let i = 0; i < view.length; i++) {
@@ -51,12 +51,12 @@ define([
                     }
                 }
         }
-        if (dx && !a.gecko && !a.presto && wheelPixelsPerUnit != null) {
+        if (dx && !m_browser.gecko && !m_browser.presto && wheelPixelsPerUnit != null) {
             if (dy && canScrollY)
-                d.updateScrollTop(cm, Math.max(0, scroll.scrollTop + dy * wheelPixelsPerUnit));
-            d.setScrollLeft(cm, Math.max(0, scroll.scrollLeft + dx * wheelPixelsPerUnit));
+                m_scrolling.updateScrollTop(cm, Math.max(0, scroll.scrollTop + dy * wheelPixelsPerUnit));
+            m_scrolling.setScrollLeft(cm, Math.max(0, scroll.scrollLeft + dx * wheelPixelsPerUnit));
             if (!dy || dy && canScrollY)
-                b.e_preventDefault(e);
+                m_event.e_preventDefault(e);
             display.wheelStartX = null;
             return;
         }
@@ -67,7 +67,7 @@ define([
                 top = Math.max(0, top + pixels - 50);
             else
                 bot = Math.min(cm.doc.height, bot + pixels + 50);
-            c.updateDisplaySimple(cm, {
+            m_update_display.updateDisplaySimple(cm, {
                 top: top,
                 bottom: bot
             });

@@ -679,19 +679,20 @@ define('skylark-codemirror/primitives/line/pos',['./utils_line'], function (util
 });
 define('skylark-codemirror/primitives/line/saw_special_spans',[],function () {
     'use strict';
-    let sawReadOnlySpans = false, sawCollapsedSpans = false;
-    function seeReadOnlySpans() {
-        sawReadOnlySpans = true;
-    }
-    function seeCollapsedSpans() {
-        sawCollapsedSpans = true;
-    }
-    return {
-        sawReadOnlySpans: sawReadOnlySpans,
-        sawCollapsedSpans: sawCollapsedSpans,
-        seeReadOnlySpans: seeReadOnlySpans,
-        seeCollapsedSpans: seeCollapsedSpans
+    let exports = {
+        sawReadOnlySpans : false, 
+        sawCollapsedSpans : false
     };
+    
+    exports.seeReadOnlySpans =  function seeReadOnlySpans() {
+        exports.sawReadOnlySpans = true;
+    };
+
+    exports.seeCollapsedSpans = function seeCollapsedSpans() {
+        exports.sawCollapsedSpans = true;
+    };
+
+    return exports;
 });
 define('skylark-codemirror/primitives/line/spans',[
     '../util/misc',
@@ -2384,7 +2385,7 @@ define('skylark-codemirror/primitives/display/update_line',[
     '../util/browser',
     '../util/dom',
     '../util/operation_group'
-], function (a, b, c, d, e) {
+], function (line_data, utils_line, browser, dom, operation_group) {
     'use strict';
     function updateLineForChanges(cm, lineView, lineN, dims) {
         for (let j = 0; j < lineView.changes.length; j++) {
@@ -2402,11 +2403,11 @@ define('skylark-codemirror/primitives/display/update_line',[
     }
     function ensureLineWrapped(lineView) {
         if (lineView.node == lineView.text) {
-            lineView.node = d.elt('div', null, null, 'position: relative');
+            lineView.node = dom.elt('div', null, null, 'position: relative');
             if (lineView.text.parentNode)
                 lineView.text.parentNode.replaceChild(lineView.node, lineView.text);
             lineView.node.appendChild(lineView.text);
-            if (c.ie && c.ie_version < 8)
+            if (browser.ie && browser.ie_version < 8)
                 lineView.node.style.zIndex = 2;
         }
         return lineView.node;
@@ -2424,7 +2425,7 @@ define('skylark-codemirror/primitives/display/update_line',[
             }
         } else if (cls) {
             let wrap = ensureLineWrapped(lineView);
-            lineView.background = wrap.insertBefore(d.elt('div', null, cls), wrap.firstChild);
+            lineView.background = wrap.insertBefore(dom.elt('div', null, cls), wrap.firstChild);
             cm.display.input.setUneditable(lineView.background);
         }
     }
@@ -2435,7 +2436,7 @@ define('skylark-codemirror/primitives/display/update_line',[
             lineView.measure = ext.measure;
             return ext.built;
         }
-        return a.buildLineContent(cm, lineView);
+        return line_data.buildLineContent(cm, lineView);
     }
     function updateLineText(cm, lineView) {
         let cls = lineView.text.className;
@@ -2472,25 +2473,25 @@ define('skylark-codemirror/primitives/display/update_line',[
         }
         if (lineView.line.gutterClass) {
             let wrap = ensureLineWrapped(lineView);
-            lineView.gutterBackground = d.elt('div', null, 'CodeMirror-gutter-background ' + lineView.line.gutterClass, `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px; width: ${ dims.gutterTotalWidth }px`);
+            lineView.gutterBackground = dom.elt('div', null, 'CodeMirror-gutter-background ' + lineView.line.gutterClass, `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px; width: ${ dims.gutterTotalWidth }px`);
             cm.display.input.setUneditable(lineView.gutterBackground);
             wrap.insertBefore(lineView.gutterBackground, lineView.text);
         }
         let markers = lineView.line.gutterMarkers;
         if (cm.options.lineNumbers || markers) {
             let wrap = ensureLineWrapped(lineView);
-            let gutterWrap = lineView.gutter = d.elt('div', null, 'CodeMirror-gutter-wrapper', `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px`);
+            let gutterWrap = lineView.gutter = dom.elt('div', null, 'CodeMirror-gutter-wrapper', `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px`);
             cm.display.input.setUneditable(gutterWrap);
             wrap.insertBefore(gutterWrap, lineView.text);
             if (lineView.line.gutterClass)
                 gutterWrap.className += ' ' + lineView.line.gutterClass;
             if (cm.options.lineNumbers && (!markers || !markers['CodeMirror-linenumbers']))
-                lineView.lineNumber = gutterWrap.appendChild(d.elt('div', b.lineNumberFor(cm.options, lineN), 'CodeMirror-linenumber CodeMirror-gutter-elt', `left: ${ dims.gutterLeft['CodeMirror-linenumbers'] }px; width: ${ cm.display.lineNumInnerWidth }px`));
+                lineView.lineNumber = gutterWrap.appendChild(dom.elt('div', utils_line.lineNumberFor(cm.options, lineN), 'CodeMirror-linenumber CodeMirror-gutter-elt', `left: ${ dims.gutterLeft['CodeMirror-linenumbers'] }px; width: ${ cm.display.lineNumInnerWidth }px`));
             if (markers)
                 for (let k = 0; k < cm.options.gutters.length; ++k) {
                     let id = cm.options.gutters[k], found = markers.hasOwnProperty(id) && markers[id];
                     if (found)
-                        gutterWrap.appendChild(d.elt('div', [found], 'CodeMirror-gutter-elt', `left: ${ dims.gutterLeft[id] }px; width: ${ dims.gutterWidth[id] }px`));
+                        gutterWrap.appendChild(dom.elt('div', [found], 'CodeMirror-gutter-elt', `left: ${ dims.gutterLeft[id] }px; width: ${ dims.gutterWidth[id] }px`));
                 }
         }
     }
@@ -2527,7 +2528,7 @@ define('skylark-codemirror/primitives/display/update_line',[
             return;
         let wrap = ensureLineWrapped(lineView);
         for (let i = 0, ws = line.widgets; i < ws.length; ++i) {
-            let widget = ws[i], node = d.elt('div', [widget.node], 'CodeMirror-linewidget');
+            let widget = ws[i], node = dom.elt('div', [widget.node], 'CodeMirror-linewidget');
             if (!widget.handleMouseEvents)
                 node.setAttribute('cm-ignore-events', 'true');
             positionLineWidget(widget, node, lineView, dims);
@@ -2536,7 +2537,7 @@ define('skylark-codemirror/primitives/display/update_line',[
                 wrap.insertBefore(node, lineView.gutter || lineView.text);
             else
                 wrap.appendChild(node);
-            e.signalLater(widget, 'redraw');
+            operation_group.signalLater(widget, 'redraw');
         }
     }
     function positionLineWidget(widget, node, lineView, dims) {
@@ -3519,7 +3520,7 @@ define('skylark-codemirror/primitives/display/update_lines',[
     '../line/utils_line',
     '../measurement/position_measurement',
     '../util/browser'
-], function (a, b, c, d) {
+], function (spans, utils_line, c, browser) {
     'use strict';
     function updateHeightsInViewport(cm) {
         let display = cm.display;
@@ -3529,7 +3530,7 @@ define('skylark-codemirror/primitives/display/update_lines',[
             let height, width = 0;
             if (cur.hidden)
                 continue;
-            if (d.ie && d.ie_version < 8) {
+            if (browser.ie && browser.ie_version < 8) {
                 let bot = cur.node.offsetTop + cur.node.offsetHeight;
                 height = bot - prevBottom;
                 prevBottom = bot;
@@ -3541,14 +3542,14 @@ define('skylark-codemirror/primitives/display/update_lines',[
             }
             let diff = cur.line.height - height;
             if (diff > 0.005 || diff < -0.005) {
-                b.updateLineHeight(cur.line, height);
+                utils_line.updateLineHeight(cur.line, height);
                 updateWidgetHeight(cur.line);
                 if (cur.rest)
                     for (let j = 0; j < cur.rest.length; j++)
                         updateWidgetHeight(cur.rest[j]);
             }
             if (width > cm.display.sizerWidth) {
-                let chWidth = Math.ceil(width / c.charWidth(cm.display));
+                let chWidth = Math.ceil(width / position_measurement.charWidth(cm.display));
                 if (chWidth > cm.display.maxLineLength) {
                     cm.display.maxLineLength = chWidth;
                     cm.display.maxLine = cur.line;
@@ -3567,16 +3568,16 @@ define('skylark-codemirror/primitives/display/update_lines',[
     }
     function visibleLines(display, doc, viewport) {
         let top = viewport && viewport.top != null ? Math.max(0, viewport.top) : display.scroller.scrollTop;
-        top = Math.floor(top - c.paddingTop(display));
+        top = Math.floor(top - position_measurement.paddingTop(display));
         let bottom = viewport && viewport.bottom != null ? viewport.bottom : top + display.wrapper.clientHeight;
-        let from = b.lineAtHeight(doc, top), to = b.lineAtHeight(doc, bottom);
+        let from = utils_line.lineAtHeight(doc, top), to = utils_line.lineAtHeight(doc, bottom);
         if (viewport && viewport.ensure) {
             let ensureFrom = viewport.ensure.from.line, ensureTo = viewport.ensure.to.line;
             if (ensureFrom < from) {
                 from = ensureFrom;
-                to = b.lineAtHeight(doc, a.heightAtLine(b.getLine(doc, ensureFrom)) + display.wrapper.clientHeight);
+                to = utils_line.lineAtHeight(doc, spans.heightAtLine(utils_line.getLine(doc, ensureFrom)) + display.wrapper.clientHeight);
             } else if (Math.min(ensureTo, doc.lastLine()) >= to) {
-                from = b.lineAtHeight(doc, a.heightAtLine(b.getLine(doc, ensureTo)) - display.wrapper.clientHeight);
+                from = utils_line.lineAtHeight(doc, spans.heightAtLine(utils_line.getLine(doc, ensureTo)) - display.wrapper.clientHeight);
                 to = ensureTo;
             }
         }
@@ -3596,7 +3597,7 @@ define('skylark-codemirror/primitives/display/view_tracking',[
     '../line/spans',
     '../measurement/position_measurement',
     '../util/misc'
-], function (a, b, c, d, e) {
+], function (m_line_data, m_saw_special_spans, m_spans, m_position_measurement, m_misc) {
     'use strict';
     function regChange(cm, from, to, lendiff) {
         if (from == null)
@@ -3610,10 +3611,10 @@ define('skylark-codemirror/primitives/display/view_tracking',[
             display.updateLineNumbers = from;
         cm.curOp.viewChanged = true;
         if (from >= display.viewTo) {
-            if (b.sawCollapsedSpans && c.visualLineNo(cm.doc, from) < display.viewTo)
+            if (m_saw_special_spans.sawCollapsedSpans && m_spans.visualLineNo(cm.doc, from) < display.viewTo)
                 resetView(cm);
         } else if (to <= display.viewFrom) {
-            if (b.sawCollapsedSpans && c.visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
+            if (m_saw_special_spans.sawCollapsedSpans && m_spans.visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
                 resetView(cm);
             } else {
                 display.viewFrom += lendiff;
@@ -3642,7 +3643,7 @@ define('skylark-codemirror/primitives/display/view_tracking',[
             let cutTop = viewCuttingPoint(cm, from, from, -1);
             let cutBot = viewCuttingPoint(cm, to, to + lendiff, 1);
             if (cutTop && cutBot) {
-                display.view = display.view.slice(0, cutTop.index).concat(a.buildViewArray(cm, cutTop.lineN, cutBot.lineN)).concat(display.view.slice(cutBot.index));
+                display.view = display.view.slice(0, cutTop.index).concat(m_line_data.buildViewArray(cm, cutTop.lineN, cutBot.lineN)).concat(display.view.slice(cutBot.index));
                 display.viewTo += lendiff;
             } else {
                 resetView(cm);
@@ -3663,11 +3664,11 @@ define('skylark-codemirror/primitives/display/view_tracking',[
             display.externalMeasured = null;
         if (line < display.viewFrom || line >= display.viewTo)
             return;
-        let lineView = display.view[d.findViewIndex(cm, line)];
+        let lineView = display.view[m_position_measurement.findViewIndex(cm, line)];
         if (lineView.node == null)
             return;
         let arr = lineView.changes || (lineView.changes = []);
-        if (e.indexOf(arr, type) == -1)
+        if (m_misc.indexOf(arr, type) == -1)
             arr.push(type);
     }
     function resetView(cm) {
@@ -3676,8 +3677,8 @@ define('skylark-codemirror/primitives/display/view_tracking',[
         cm.display.viewOffset = 0;
     }
     function viewCuttingPoint(cm, oldN, newN, dir) {
-        let index = d.findViewIndex(cm, oldN), diff, view = cm.display.view;
-        if (!b.sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
+        let index = m_position_measurement.findViewIndex(cm, oldN), diff, view = cm.display.view;
+        if (!m_saw_special_spans.sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
             return {
                 index: index,
                 lineN: newN
@@ -3697,7 +3698,7 @@ define('skylark-codemirror/primitives/display/view_tracking',[
             oldN += diff;
             newN += diff;
         }
-        while (c.visualLineNo(cm.doc, newN) != newN) {
+        while (m_spans.visualLineNo(cm.doc, newN) != newN) {
             if (index == (dir < 0 ? 0 : view.length - 1))
                 return null;
             newN += dir * view[index - (dir < 0 ? 1 : 0)].size;
@@ -3711,18 +3712,18 @@ define('skylark-codemirror/primitives/display/view_tracking',[
     function adjustView(cm, from, to) {
         let display = cm.display, view = display.view;
         if (view.length == 0 || from >= display.viewTo || to <= display.viewFrom) {
-            display.view = a.buildViewArray(cm, from, to);
+            display.view = m_line_data.buildViewArray(cm, from, to);
             display.viewFrom = from;
         } else {
             if (display.viewFrom > from)
-                display.view = a.buildViewArray(cm, from, display.viewFrom).concat(display.view);
+                display.view = m_line_data.buildViewArray(cm, from, display.viewFrom).concat(display.view);
             else if (display.viewFrom < from)
-                display.view = display.view.slice(d.findViewIndex(cm, from));
+                display.view = display.view.slice(m_position_measurement.findViewIndex(cm, from));
             display.viewFrom = from;
             if (display.viewTo < to)
-                display.view = display.view.concat(a.buildViewArray(cm, display.viewTo, to));
+                display.view = display.view.concat(m_line_data.buildViewArray(cm, display.viewTo, to));
             else if (display.viewTo > to)
-                display.view = display.view.slice(0, d.findViewIndex(cm, to));
+                display.view = display.view.slice(0, m_position_measurement.findViewIndex(cm, to));
         }
         display.viewTo = to;
     }
@@ -3760,65 +3761,65 @@ define('skylark-codemirror/primitives/display/update_display',[
     './update_lines',
     './view_tracking'
 ], function (
-    a, 
-    b, 
-    c, 
-    d, 
-    e, 
-    f, 
-    g, 
-    h, 
+    saw_special_spans, 
+    m_spans, 
+    m_utils_line, 
+    m_position_measurement, 
+    m_browser, 
+    m_dom, 
+    m_event, 
+    m_misc, 
     m_update_line, 
 //    j, 
 //    k, 
 //    l, 
-    m, 
-    n, 
-    o
+    m_selection, 
+    m_update_lines, 
+    m_view_tracking
 ) {
     'use strict';
     class DisplayUpdate {
         constructor(cm, viewport, force) {
             let display = cm.display;
             this.viewport = viewport;
-            this.visible = n.visibleLines(display, cm.doc, viewport);
+            this.visible = m_update_lines.visibleLines(display, cm.doc, viewport);
             this.editorIsHidden = !display.wrapper.offsetWidth;
             this.wrapperHeight = display.wrapper.clientHeight;
             this.wrapperWidth = display.wrapper.clientWidth;
-            this.oldDisplayWidth = d.displayWidth(cm);
+            this.oldDisplayWidth = m_position_measurement.displayWidth(cm);
             this.force = force;
-            this.dims = d.getDimensions(cm);
+            this.dims = m_position_measurement.getDimensions(cm);
             this.events = [];
         }
         signal(emitter, type) {
-            if (g.hasHandler(emitter, type))
+            if (m_event.hasHandler(emitter, type))
                 this.events.push(arguments);
         }
         finish() {
             for (let i = 0; i < this.events.length; i++)
-                g.signal.apply(null, this.events[i]);
+                m_event.signal.apply(null, this.events[i]);
         }
     }
     function maybeClipScrollbars(cm) {
         let display = cm.display;
         if (!display.scrollbarsClipped && display.scroller.offsetWidth) {
             display.nativeBarWidth = display.scroller.offsetWidth - display.scroller.clientWidth;
-            display.heightForcer.style.height = d.scrollGap(cm) + 'px';
+            display.heightForcer.style.height = m_position_measurement.scrollGap(cm) + 'px';
             display.sizer.style.marginBottom = -display.nativeBarWidth + 'px';
-            display.sizer.style.borderRightWidth = d.scrollGap(cm) + 'px';
+            display.sizer.style.borderRightWidth = m_position_measurement.scrollGap(cm) + 'px';
             display.scrollbarsClipped = true;
         }
     }
     function selectionSnapshot(cm) {
         if (cm.hasFocus())
             return null;
-        let active = f.activeElt();
-        if (!active || !f.contains(cm.display.lineDiv, active))
+        let active = m_dom.activeElt();
+        if (!active || !m_dom.contains(cm.display.lineDiv, active))
             return null;
         let result = { activeElt: active };
         if (window.getSelection) {
             let sel = window.getSelection();
-            if (sel.anchorNode && sel.extend && f.contains(cm.display.lineDiv, sel.anchorNode)) {
+            if (sel.anchorNode && sel.extend && m_dom.contains(cm.display.lineDiv, sel.anchorNode)) {
                 result.anchorNode = sel.anchorNode;
                 result.anchorOffset = sel.anchorOffset;
                 result.focusNode = sel.focusNode;
@@ -3828,10 +3829,10 @@ define('skylark-codemirror/primitives/display/update_display',[
         return result;
     }
     function restoreSelection(snapshot) {
-        if (!snapshot || !snapshot.activeElt || snapshot.activeElt == f.activeElt())
+        if (!snapshot || !snapshot.activeElt || snapshot.activeElt == m_dom.activeElt())
             return;
         snapshot.activeElt.focus();
-        if (snapshot.anchorNode && f.contains(document.body, snapshot.anchorNode) && f.contains(document.body, snapshot.focusNode)) {
+        if (snapshot.anchorNode && m_dom.contains(document.body, snapshot.anchorNode) && m_dom.contains(document.body, snapshot.focusNode)) {
             let sel = window.getSelection(), range = document.createRange();
             range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
             range.collapse(false);
@@ -3843,14 +3844,14 @@ define('skylark-codemirror/primitives/display/update_display',[
     function updateDisplayIfNeeded(cm, update) {
         let display = cm.display, doc = cm.doc;
         if (update.editorIsHidden) {
-            o.resetView(cm);
+            m_view_tracking.resetView(cm);
             return false;
         }
-        if (!update.force && update.visible.from >= display.viewFrom && update.visible.to <= display.viewTo && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo) && display.renderedView == display.view && o.countDirtyView(cm) == 0)
+        if (!update.force && update.visible.from >= display.viewFrom && update.visible.to <= display.viewTo && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo) && display.renderedView == display.view && m_view_tracking.countDirtyView(cm) == 0)
             return false;
         if (cm.maybeUpdateLineNumberWidth()) { //if (k.maybeUpdateLineNumberWidth(cm)) {
-            o.resetView(cm);
-            update.dims = d.getDimensions(cm);
+            m_view_tracking.resetView(cm);
+            update.dims = m_position_measurement.getDimensions(cm);
         }
         let end = doc.first + doc.size;
         let from = Math.max(update.visible.from - cm.options.viewportMargin, doc.first);
@@ -3859,15 +3860,15 @@ define('skylark-codemirror/primitives/display/update_display',[
             from = Math.max(doc.first, display.viewFrom);
         if (display.viewTo > to && display.viewTo - to < 20)
             to = Math.min(end, display.viewTo);
-        if (a.sawCollapsedSpans) {
-            from = b.visualLineNo(cm.doc, from);
-            to = b.visualLineEndNo(cm.doc, to);
+        if (saw_special_spans.sawCollapsedSpans) {
+            from = m_spans.visualLineNo(cm.doc, from);
+            to = m_spans.visualLineEndNo(cm.doc, to);
         }
         let different = from != display.viewFrom || to != display.viewTo || display.lastWrapHeight != update.wrapperHeight || display.lastWrapWidth != update.wrapperWidth;
-        o.adjustView(cm, from, to);
-        display.viewOffset = b.heightAtLine(c.getLine(cm.doc, display.viewFrom));
+        m_view_tracking.adjustView(cm, from, to);
+        display.viewOffset = m_spans.heightAtLine(m_utils_line.getLine(cm.doc, display.viewFrom));
         cm.display.mover.style.top = display.viewOffset + 'px';
-        let toUpdate = o.countDirtyView(cm);
+        let toUpdate = m_view_tracking.countDirtyView(cm);
         if (!different && toUpdate == 0 && !update.force && display.renderedView == display.view && (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo))
             return false;
         let selSnapshot = selectionSnapshot(cm);
@@ -3878,8 +3879,8 @@ define('skylark-codemirror/primitives/display/update_display',[
             display.lineDiv.style.display = '';
         display.renderedView = display.view;
         restoreSelection(selSnapshot);
-        f.removeChildren(display.cursorDiv);
-        f.removeChildren(display.selectionDiv);
+        m_dom.removeChildren(display.cursorDiv);
+        m_dom.removeChildren(display.selectionDiv);
         display.gutters.style.height = display.sizer.style.minHeight = 0;
         if (different) {
             display.lastWrapHeight = update.wrapperHeight;
@@ -3892,18 +3893,18 @@ define('skylark-codemirror/primitives/display/update_display',[
     function postUpdateDisplay(cm, update) {
         let viewport = update.viewport;
         for (let first = true;; first = false) {
-            if (!first || !cm.options.lineWrapping || update.oldDisplayWidth == d.displayWidth(cm)) {
+            if (!first || !cm.options.lineWrapping || update.oldDisplayWidth == m_position_measurement.displayWidth(cm)) {
                 if (viewport && viewport.top != null)
-                    viewport = { top: Math.min(cm.doc.height + d.paddingVert(cm.display) - d.displayHeight(cm), viewport.top) };
-                update.visible = n.visibleLines(cm.display, cm.doc, viewport);
+                    viewport = { top: Math.min(cm.doc.height + m_position_measurement.paddingVert(cm.display) - m_position_measurement.displayHeight(cm), viewport.top) };
+                update.visible = m_update_lines.visibleLines(cm.display, cm.doc, viewport);
                 if (update.visible.from >= cm.display.viewFrom && update.visible.to <= cm.display.viewTo)
                     break;
             }
             if (!updateDisplayIfNeeded(cm, update))
                 break;
-            n.updateHeightsInViewport(cm);
+            m_update_lines.updateHeightsInViewport(cm);
             let barMeasure = cm.measureForScrollbars(); //l.measureForScrollbars(cm);
-            m.updateSelection(cm);
+            m_selection.updateSelection(cm);
             cm.updateScrollbars(barMeasure); //l.updateScrollbars(cm, barMeasure);
             setDocumentHeight(cm, barMeasure);
             update.force = false;
@@ -3918,10 +3919,10 @@ define('skylark-codemirror/primitives/display/update_display',[
     function updateDisplaySimple(cm, viewport) {
         let update = new DisplayUpdate(cm, viewport);
         if (updateDisplayIfNeeded(cm, update)) {
-            n.updateHeightsInViewport(cm);
+            m_update_lines.updateHeightsInViewport(cm);
             postUpdateDisplay(cm, update);
             let barMeasure = cm.measureForScrollbars(); //l.measureForScrollbars(cm);
-            m.updateSelection(cm);
+            m_selection.updateSelection(cm);
             cm.updateScrollbars(barMeasure); // l.updateScrollbars(cm, barMeasure);
             setDocumentHeight(cm, barMeasure);
             update.finish();
@@ -3932,7 +3933,7 @@ define('skylark-codemirror/primitives/display/update_display',[
         let container = display.lineDiv, cur = container.firstChild;
         function rm(node) {
             let next = node.nextSibling;
-            if (e.webkit && e.mac && cm.display.currentWheelTarget == node)
+            if (m_browser.webkit && m_browser.mac && cm.display.currentWheelTarget == node)
                 node.style.display = 'none';
             else
                 node.parentNode.removeChild(node);
@@ -3950,13 +3951,13 @@ define('skylark-codemirror/primitives/display/update_display',[
                     cur = rm(cur);
                 let updateNumber = lineNumbers && updateNumbersFrom != null && updateNumbersFrom <= lineN && lineView.lineNumber;
                 if (lineView.changes) {
-                    if (h.indexOf(lineView.changes, 'gutter') > -1)
+                    if (m_misc.indexOf(lineView.changes, 'gutter') > -1)
                         updateNumber = false;
                     m_update_line.updateLineForChanges(cm, lineView, lineN, dims);
                 }
                 if (updateNumber) {
-                    f.removeChildren(lineView.lineNumber);
-                    lineView.lineNumber.appendChild(document.createTextNode(c.lineNumberFor(cm.options, lineN)));
+                    m_dom.removeChildren(lineView.lineNumber);
+                    lineView.lineNumber.appendChild(document.createTextNode(m_utils_line.lineNumberFor(cm.options, lineN)));
                 }
                 cur = lineView.node.nextSibling;
             }
@@ -3972,7 +3973,7 @@ define('skylark-codemirror/primitives/display/update_display',[
     function setDocumentHeight(cm, measure) {
         cm.display.sizer.style.minHeight = measure.docHeight + 'px';
         cm.display.heightForcer.style.top = measure.docHeight + 'px';
-        cm.display.gutters.style.height = measure.docHeight + cm.display.barHeight + d.scrollGap(cm) + 'px';
+        cm.display.gutters.style.height = measure.docHeight + cm.display.barHeight + m_position_measurement.scrollGap(cm) + 'px';
     }
     return {
         DisplayUpdate: DisplayUpdate,
@@ -4475,7 +4476,7 @@ define('skylark-codemirror/primitives/display/operations',[
     './scrolling',
     './update_display',
     './update_lines'
-], function (a, b, c, d, e, f, g, h, i, j, k, l) {
+], function (m_pos, m_spans, position_measurement, m_event, m_dom, m_operation_group, m_focus, m_scrollbars, m_selection, m_scrolling, m_update_display, m_update_lines) {
     'use strict';
     let nextOpId = 0;
     function startOperation(cm) {
@@ -4497,12 +4498,12 @@ define('skylark-codemirror/primitives/display/operations',[
             focus: false,
             id: ++nextOpId
         };
-        f.pushOperation(cm.curOp);
+        m_operation_group.pushOperation(cm.curOp);
     }
     function endOperation(cm) {
         let op = cm.curOp;
         if (op)
-            f.finishOperation(op, group => {
+            m_operation_group.finishOperation(op, group => {
                 for (let i = 0; i < group.ops.length; i++)
                     group.ops[i].cm.curOp = null;
                 endOperations(group);
@@ -4523,28 +4524,28 @@ define('skylark-codemirror/primitives/display/operations',[
     }
     function endOperation_R1(op) {
         let cm = op.cm, display = cm.display;
-        k.maybeClipScrollbars(cm);
+        m_update_display.maybeClipScrollbars(cm);
         if (op.updateMaxLine)
-            b.findMaxLine(cm);
+            m_spans.findMaxLine(cm);
         op.mustUpdate = op.viewChanged || op.forceUpdate || op.scrollTop != null || op.scrollToPos && (op.scrollToPos.from.line < display.viewFrom || op.scrollToPos.to.line >= display.viewTo) || display.maxLineChanged && cm.options.lineWrapping;
-        op.update = op.mustUpdate && new k.DisplayUpdate(cm, op.mustUpdate && {
+        op.update = op.mustUpdate && new m_update_display.DisplayUpdate(cm, op.mustUpdate && {
             top: op.scrollTop,
             ensure: op.scrollToPos
         }, op.forceUpdate);
     }
     function endOperation_W1(op) {
-        op.updatedDisplay = op.mustUpdate && k.updateDisplayIfNeeded(op.cm, op.update);
+        op.updatedDisplay = op.mustUpdate && m_update_display.updateDisplayIfNeeded(op.cm, op.update);
     }
     function endOperation_R2(op) {
         let cm = op.cm, display = cm.display;
         if (op.updatedDisplay)
-            l.updateHeightsInViewport(cm);
-        op.barMeasure = h.measureForScrollbars(cm);
+            m_update_lines.updateHeightsInViewport(cm);
+        op.barMeasure = m_scrollbars.measureForScrollbars(cm);
         if (display.maxLineChanged && !cm.options.lineWrapping) {
-            op.adjustWidthTo = c.measureChar(cm, display.maxLine, display.maxLine.text.length).left + 3;
+            op.adjustWidthTo = position_measurement.measureChar(cm, display.maxLine, display.maxLine.text.length).left + 3;
             cm.display.sizerWidth = op.adjustWidthTo;
-            op.barMeasure.scrollWidth = Math.max(display.scroller.clientWidth, display.sizer.offsetLeft + op.adjustWidthTo + c.scrollGap(cm) + cm.display.barWidth);
-            op.maxScrollLeft = Math.max(0, display.sizer.offsetLeft + op.adjustWidthTo - c.displayWidth(cm));
+            op.barMeasure.scrollWidth = Math.max(display.scroller.clientWidth, display.sizer.offsetLeft + op.adjustWidthTo + position_measurement.scrollGap(cm) + cm.display.barWidth);
+            op.maxScrollLeft = Math.max(0, display.sizer.offsetLeft + op.adjustWidthTo - position_measurement.displayWidth(cm));
         }
         if (op.updatedDisplay || op.selectionChanged)
             op.preparedSelection = display.input.prepareSelection();
@@ -4554,50 +4555,50 @@ define('skylark-codemirror/primitives/display/operations',[
         if (op.adjustWidthTo != null) {
             cm.display.sizer.style.minWidth = op.adjustWidthTo + 'px';
             if (op.maxScrollLeft < cm.doc.scrollLeft)
-                j.setScrollLeft(cm, Math.min(cm.display.scroller.scrollLeft, op.maxScrollLeft), true);
+                m_scrolling.setScrollLeft(cm, Math.min(cm.display.scroller.scrollLeft, op.maxScrollLeft), true);
             cm.display.maxLineChanged = false;
         }
-        let takeFocus = op.focus && op.focus == e.activeElt();
+        let takeFocus = op.focus && op.focus == m_dom.activeElt();
         if (op.preparedSelection)
             cm.display.input.showSelection(op.preparedSelection, takeFocus);
         if (op.updatedDisplay || op.startHeight != cm.doc.height)
-            h.updateScrollbars(cm, op.barMeasure);
+            m_scrollbars.updateScrollbars(cm, op.barMeasure);
         if (op.updatedDisplay)
-            k.setDocumentHeight(cm, op.barMeasure);
+            m_update_display.setDocumentHeight(cm, op.barMeasure);
         if (op.selectionChanged)
-            i.restartBlink(cm);
+            m_selection.restartBlink(cm);
         if (cm.state.focused && op.updateInput)
             cm.display.input.reset(op.typing);
         if (takeFocus)
-            g.ensureFocus(op.cm);
+            m_focus.ensureFocus(op.cm);
     }
     function endOperation_finish(op) {
         let cm = op.cm, display = cm.display, doc = cm.doc;
         if (op.updatedDisplay)
-            k.postUpdateDisplay(cm, op.update);
+            m_update_display.postUpdateDisplay(cm, op.update);
         if (display.wheelStartX != null && (op.scrollTop != null || op.scrollLeft != null || op.scrollToPos))
             display.wheelStartX = display.wheelStartY = null;
         if (op.scrollTop != null)
-            j.setScrollTop(cm, op.scrollTop, op.forceScroll);
+            m_scrolling.setScrollTop(cm, op.scrollTop, op.forceScroll);
         if (op.scrollLeft != null)
-            j.setScrollLeft(cm, op.scrollLeft, true, true);
+            m_scrolling.setScrollLeft(cm, op.scrollLeft, true, true);
         if (op.scrollToPos) {
-            let rect = j.scrollPosIntoView(cm, a.clipPos(doc, op.scrollToPos.from), a.clipPos(doc, op.scrollToPos.to), op.scrollToPos.margin);
-            j.maybeScrollWindow(cm, rect);
+            let rect = m_scrolling.scrollPosIntoView(cm, m_pos.clipPos(doc, op.scrollToPos.from), m_pos.clipPos(doc, op.scrollToPos.to), op.scrollToPos.margin);
+            m_scrolling.maybeScrollWindow(cm, rect);
         }
         let hidden = op.maybeHiddenMarkers, unhidden = op.maybeUnhiddenMarkers;
         if (hidden)
             for (let i = 0; i < hidden.length; ++i)
                 if (!hidden[i].lines.length)
-                    d.signal(hidden[i], 'hide');
+                    m_event.signal(hidden[i], 'hide');
         if (unhidden)
             for (let i = 0; i < unhidden.length; ++i)
                 if (unhidden[i].lines.length)
-                    d.signal(unhidden[i], 'unhide');
+                    m_event.signal(unhidden[i], 'unhide');
         if (display.wrapper.offsetHeight)
             doc.scrollTop = cm.display.scroller.scrollTop;
         if (op.changeObjs)
-            d.signal(cm, 'changes', cm, op.changeObjs);
+            m_event.signal(cm, 'changes', cm, op.changeObjs);
         if (op.update)
             op.update.finish();
     }
@@ -4662,16 +4663,16 @@ define('skylark-codemirror/primitives/display/scroll_events',[
     '../util/event',
     './update_display',
     './scrolling'
-], function (a, b, c, d) {
+], function (m_browser, m_event, m_update_display, m_scrolling) {
     'use strict';
     let wheelSamples = 0, wheelPixelsPerUnit = null;
-    if (a.ie)
+    if (m_browser.ie)
         wheelPixelsPerUnit = -0.53;
-    else if (a.gecko)
+    else if (m_browser.gecko)
         wheelPixelsPerUnit = 15;
-    else if (a.chrome)
+    else if (m_browser.chrome)
         wheelPixelsPerUnit = -0.7;
-    else if (a.safari)
+    else if (m_browser.safari)
         wheelPixelsPerUnit = -1 / 3;
     function wheelEventDelta(e) {
         let dx = e.wheelDeltaX, dy = e.wheelDeltaY;
@@ -4699,7 +4700,7 @@ define('skylark-codemirror/primitives/display/scroll_events',[
         let canScrollY = scroll.scrollHeight > scroll.clientHeight;
         if (!(dx && canScrollX || dy && canScrollY))
             return;
-        if (dy && a.mac && a.webkit) {
+        if (dy && m_browser.mac && m_browser.webkit) {
             outer:
                 for (let cur = e.target, view = display.view; cur != scroll; cur = cur.parentNode) {
                     for (let i = 0; i < view.length; i++) {
@@ -4710,12 +4711,12 @@ define('skylark-codemirror/primitives/display/scroll_events',[
                     }
                 }
         }
-        if (dx && !a.gecko && !a.presto && wheelPixelsPerUnit != null) {
+        if (dx && !m_browser.gecko && !m_browser.presto && wheelPixelsPerUnit != null) {
             if (dy && canScrollY)
-                d.updateScrollTop(cm, Math.max(0, scroll.scrollTop + dy * wheelPixelsPerUnit));
-            d.setScrollLeft(cm, Math.max(0, scroll.scrollLeft + dx * wheelPixelsPerUnit));
+                m_scrolling.updateScrollTop(cm, Math.max(0, scroll.scrollTop + dy * wheelPixelsPerUnit));
+            m_scrolling.setScrollLeft(cm, Math.max(0, scroll.scrollLeft + dx * wheelPixelsPerUnit));
             if (!dy || dy && canScrollY)
-                b.e_preventDefault(e);
+                m_event.e_preventDefault(e);
             display.wheelStartX = null;
             return;
         }
@@ -4726,7 +4727,7 @@ define('skylark-codemirror/primitives/display/scroll_events',[
                 top = Math.max(0, top + pixels - 50);
             else
                 bot = Math.min(cm.doc.height, bot + pixels + 50);
-            c.updateDisplaySimple(cm, {
+            m_update_display.updateDisplaySimple(cm, {
                 top: top,
                 bottom: bot
             });
@@ -5847,7 +5848,7 @@ define('skylark-codemirror/primitives/model/chunk',[
     '../line/line_data',
     '../util/misc',
     '../util/operation_group'
-], function (a, b, c) {
+], function (m_line_data, b, c) {
     'use strict';
     function LeafChunk(lines) {
         this.lines = lines;
@@ -5867,7 +5868,7 @@ define('skylark-codemirror/primitives/model/chunk',[
             for (let i = at, e = at + n; i < e; ++i) {
                 let line = this.lines[i];
                 this.height -= line.height;
-                a.cleanUpLine(line);
+                m_line_data.cleanUpLine(line);
                 c.signalLater(line, 'delete');
             }
             this.lines.splice(at, n);

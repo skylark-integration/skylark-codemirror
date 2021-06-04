@@ -4,7 +4,7 @@ define([
     '../util/browser',
     '../util/dom',
     '../util/operation_group'
-], function (a, b, c, d, e) {
+], function (line_data, utils_line, browser, dom, operation_group) {
     'use strict';
     function updateLineForChanges(cm, lineView, lineN, dims) {
         for (let j = 0; j < lineView.changes.length; j++) {
@@ -22,11 +22,11 @@ define([
     }
     function ensureLineWrapped(lineView) {
         if (lineView.node == lineView.text) {
-            lineView.node = d.elt('div', null, null, 'position: relative');
+            lineView.node = dom.elt('div', null, null, 'position: relative');
             if (lineView.text.parentNode)
                 lineView.text.parentNode.replaceChild(lineView.node, lineView.text);
             lineView.node.appendChild(lineView.text);
-            if (c.ie && c.ie_version < 8)
+            if (browser.ie && browser.ie_version < 8)
                 lineView.node.style.zIndex = 2;
         }
         return lineView.node;
@@ -44,7 +44,7 @@ define([
             }
         } else if (cls) {
             let wrap = ensureLineWrapped(lineView);
-            lineView.background = wrap.insertBefore(d.elt('div', null, cls), wrap.firstChild);
+            lineView.background = wrap.insertBefore(dom.elt('div', null, cls), wrap.firstChild);
             cm.display.input.setUneditable(lineView.background);
         }
     }
@@ -55,7 +55,7 @@ define([
             lineView.measure = ext.measure;
             return ext.built;
         }
-        return a.buildLineContent(cm, lineView);
+        return line_data.buildLineContent(cm, lineView);
     }
     function updateLineText(cm, lineView) {
         let cls = lineView.text.className;
@@ -92,25 +92,25 @@ define([
         }
         if (lineView.line.gutterClass) {
             let wrap = ensureLineWrapped(lineView);
-            lineView.gutterBackground = d.elt('div', null, 'CodeMirror-gutter-background ' + lineView.line.gutterClass, `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px; width: ${ dims.gutterTotalWidth }px`);
+            lineView.gutterBackground = dom.elt('div', null, 'CodeMirror-gutter-background ' + lineView.line.gutterClass, `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px; width: ${ dims.gutterTotalWidth }px`);
             cm.display.input.setUneditable(lineView.gutterBackground);
             wrap.insertBefore(lineView.gutterBackground, lineView.text);
         }
         let markers = lineView.line.gutterMarkers;
         if (cm.options.lineNumbers || markers) {
             let wrap = ensureLineWrapped(lineView);
-            let gutterWrap = lineView.gutter = d.elt('div', null, 'CodeMirror-gutter-wrapper', `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px`);
+            let gutterWrap = lineView.gutter = dom.elt('div', null, 'CodeMirror-gutter-wrapper', `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px`);
             cm.display.input.setUneditable(gutterWrap);
             wrap.insertBefore(gutterWrap, lineView.text);
             if (lineView.line.gutterClass)
                 gutterWrap.className += ' ' + lineView.line.gutterClass;
             if (cm.options.lineNumbers && (!markers || !markers['CodeMirror-linenumbers']))
-                lineView.lineNumber = gutterWrap.appendChild(d.elt('div', b.lineNumberFor(cm.options, lineN), 'CodeMirror-linenumber CodeMirror-gutter-elt', `left: ${ dims.gutterLeft['CodeMirror-linenumbers'] }px; width: ${ cm.display.lineNumInnerWidth }px`));
+                lineView.lineNumber = gutterWrap.appendChild(dom.elt('div', utils_line.lineNumberFor(cm.options, lineN), 'CodeMirror-linenumber CodeMirror-gutter-elt', `left: ${ dims.gutterLeft['CodeMirror-linenumbers'] }px; width: ${ cm.display.lineNumInnerWidth }px`));
             if (markers)
                 for (let k = 0; k < cm.options.gutters.length; ++k) {
                     let id = cm.options.gutters[k], found = markers.hasOwnProperty(id) && markers[id];
                     if (found)
-                        gutterWrap.appendChild(d.elt('div', [found], 'CodeMirror-gutter-elt', `left: ${ dims.gutterLeft[id] }px; width: ${ dims.gutterWidth[id] }px`));
+                        gutterWrap.appendChild(dom.elt('div', [found], 'CodeMirror-gutter-elt', `left: ${ dims.gutterLeft[id] }px; width: ${ dims.gutterWidth[id] }px`));
                 }
         }
     }
@@ -147,7 +147,7 @@ define([
             return;
         let wrap = ensureLineWrapped(lineView);
         for (let i = 0, ws = line.widgets; i < ws.length; ++i) {
-            let widget = ws[i], node = d.elt('div', [widget.node], 'CodeMirror-linewidget');
+            let widget = ws[i], node = dom.elt('div', [widget.node], 'CodeMirror-linewidget');
             if (!widget.handleMouseEvents)
                 node.setAttribute('cm-ignore-events', 'true');
             positionLineWidget(widget, node, lineView, dims);
@@ -156,7 +156,7 @@ define([
                 wrap.insertBefore(node, lineView.gutter || lineView.text);
             else
                 wrap.appendChild(node);
-            e.signalLater(widget, 'redraw');
+            operation_group.signalLater(widget, 'redraw');
         }
     }
     function positionLineWidget(widget, node, lineView, dims) {

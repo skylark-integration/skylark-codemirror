@@ -1,16 +1,17 @@
 define(function () {
     'use strict';
-    let sawReadOnlySpans = false, sawCollapsedSpans = false;
-    function seeReadOnlySpans() {
-        sawReadOnlySpans = true;
-    }
-    function seeCollapsedSpans() {
-        sawCollapsedSpans = true;
-    }
-    return {
-        sawReadOnlySpans: sawReadOnlySpans,
-        sawCollapsedSpans: sawCollapsedSpans,
-        seeReadOnlySpans: seeReadOnlySpans,
-        seeCollapsedSpans: seeCollapsedSpans
+    let exports = {
+        sawReadOnlySpans : false, 
+        sawCollapsedSpans : false
     };
+    
+    exports.seeReadOnlySpans =  function seeReadOnlySpans() {
+        exports.sawReadOnlySpans = true;
+    };
+
+    exports.seeCollapsedSpans = function seeCollapsedSpans() {
+        exports.sawCollapsedSpans = true;
+    };
+
+    return exports;
 });

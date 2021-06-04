@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-codemirror/
  * @license MIT
  */
-define(function(){"use strict";let n=!1,e=!1;return{sawReadOnlySpans:n,sawCollapsedSpans:e,seeReadOnlySpans:function(){n=!0},seeCollapsedSpans:function(){e=!0}}});
+define(function(){"use strict";let exports={sawReadOnlySpans:!1,sawCollapsedSpans:!1,seeReadOnlySpans:function(){exports.sawReadOnlySpans=!0},seeCollapsedSpans:function(){exports.sawCollapsedSpans=!0}};return exports});
 //# sourceMappingURL=../../sourcemaps/primitives/line/saw_special_spans.js.map

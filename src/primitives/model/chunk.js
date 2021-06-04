@@ -2,7 +2,7 @@ define([
     '../line/line_data',
     '../util/misc',
     '../util/operation_group'
-], function (a, b, c) {
+], function (m_line_data, b, c) {
     'use strict';
     function LeafChunk(lines) {
         this.lines = lines;
@@ -22,7 +22,7 @@ define([
             for (let i = at, e = at + n; i < e; ++i) {
                 let line = this.lines[i];
                 this.height -= line.height;
-                a.cleanUpLine(line);
+                m_line_data.cleanUpLine(line);
                 c.signalLater(line, 'delete');
             }
             this.lines.splice(at, n);

@@ -4,7 +4,7 @@ define([
     '../line/spans',
     '../measurement/position_measurement',
     '../util/misc'
-], function (a, b, c, d, e) {
+], function (m_line_data, m_saw_special_spans, m_spans, m_position_measurement, m_misc) {
     'use strict';
     function regChange(cm, from, to, lendiff) {
         if (from == null)
@@ -18,10 +18,10 @@ define([
             display.updateLineNumbers = from;
         cm.curOp.viewChanged = true;
         if (from >= display.viewTo) {
-            if (b.sawCollapsedSpans && c.visualLineNo(cm.doc, from) < display.viewTo)
+            if (m_saw_special_spans.sawCollapsedSpans && m_spans.visualLineNo(cm.doc, from) < display.viewTo)
                 resetView(cm);
         } else if (to <= display.viewFrom) {
-            if (b.sawCollapsedSpans && c.visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
+            if (m_saw_special_spans.sawCollapsedSpans && m_spans.visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
                 resetView(cm);
             } else {
                 display.viewFrom += lendiff;
@@ -50,7 +50,7 @@ define([
             let cutTop = viewCuttingPoint(cm, from, from, -1);
             let cutBot = viewCuttingPoint(cm, to, to + lendiff, 1);
             if (cutTop && cutBot) {
-                display.view = display.view.slice(0, cutTop.index).concat(a.buildViewArray(cm, cutTop.lineN, cutBot.lineN)).concat(display.view.slice(cutBot.index));
+                display.view = display.view.slice(0, cutTop.index).concat(m_line_data.buildViewArray(cm, cutTop.lineN, cutBot.lineN)).concat(display.view.slice(cutBot.index));
                 display.viewTo += lendiff;
             } else {
                 resetView(cm);
@@ -71,11 +71,11 @@ define([
             display.externalMeasured = null;
         if (line < display.viewFrom || line >= display.viewTo)
             return;
-        let lineView = display.view[d.findViewIndex(cm, line)];
+        let lineView = display.view[m_position_measurement.findViewIndex(cm, line)];
         if (lineView.node == null)
             return;
         let arr = lineView.changes || (lineView.changes = []);
-        if (e.indexOf(arr, type) == -1)
+        if (m_misc.indexOf(arr, type) == -1)
             arr.push(type);
     }
     function resetView(cm) {
@@ -84,8 +84,8 @@ define([
         cm.display.viewOffset = 0;
     }
     function viewCuttingPoint(cm, oldN, newN, dir) {
-        let index = d.findViewIndex(cm, oldN), diff, view = cm.display.view;
-        if (!b.sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
+        let index = m_position_measurement.findViewIndex(cm, oldN), diff, view = cm.display.view;
+        if (!m_saw_special_spans.sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
             return {
                 index: index,
                 lineN: newN
@@ -105,7 +105,7 @@ define([
             oldN += diff;
             newN += diff;
         }
-        while (c.visualLineNo(cm.doc, newN) != newN) {
+        while (m_spans.visualLineNo(cm.doc, newN) != newN) {
             if (index == (dir < 0 ? 0 : view.length - 1))
                 return null;
             newN += dir * view[index - (dir < 0 ? 1 : 0)].size;
@@ -119,18 +119,18 @@ define([
     function adjustView(cm, from, to) {
         let display = cm.display, view = display.view;
         if (view.length == 0 || from >= display.viewTo || to <= display.viewFrom) {
-            display.view = a.buildViewArray(cm, from, to);
+            display.view = m_line_data.buildViewArray(cm, from, to);
             display.viewFrom = from;
         } else {
             if (display.viewFrom > from)
-                display.view = a.buildViewArray(cm, from, display.viewFrom).concat(display.view);
+                display.view = m_line_data.buildViewArray(cm, from, display.viewFrom).concat(display.view);
             else if (display.viewFrom < from)
-                display.view = display.view.slice(d.findViewIndex(cm, from));
+                display.view = display.view.slice(m_position_measurement.findViewIndex(cm, from));
             display.viewFrom = from;
             if (display.viewTo < to)
-                display.view = display.view.concat(a.buildViewArray(cm, display.viewTo, to));
+                display.view = display.view.concat(m_line_data.buildViewArray(cm, display.viewTo, to));
             else if (display.viewTo > to)
-                display.view = display.view.slice(0, d.findViewIndex(cm, to));
+                display.view = display.view.slice(0, m_position_measurement.findViewIndex(cm, to));
         }
         display.viewTo = to;
     }
