@@ -17,7 +17,7 @@ define([
     './mark_text',
     './selection',
     './selection_updates'
-], function (operations, line_data, m_pos, spans, utils_line, dom, feature_detection, misc, scrolling, changes, change_measurement, chunk, document_data, m_history, line_widget, mark_text, m_selection, selection_updates) {
+], function (m_operations, m_line_data, m_pos, m_spans, m_utils_line, m_dom, m_feature_detection, m_misc, m_scrolling, m_changes, change_measurement, chunk, document_data, m_history, line_widget, mark_text, m_selection, selection_updates) {
     'use strict';
     let nextDocId = 0;
     let Doc = function (text, mode, firstLine, lineSep, direction) {
@@ -25,7 +25,7 @@ define([
             return new Doc(text, mode, firstLine, lineSep, direction);
         if (firstLine == null)
             firstLine = 0;
-        chunk.BranchChunk.call(this, [new chunk.LeafChunk([new line_data.Line('', null)])]);
+        chunk.BranchChunk.call(this, [new chunk.LeafChunk([new m_line_data.Line('', null)])]);
         this.first = firstLine;
         this.scrollTop = this.scrollLeft = 0;
         this.cantEdit = false;
@@ -46,9 +46,9 @@ define([
             to: start,
             text: text
         });
-        selection_updates.setSelection(this, m_selection.simpleSelection(start), misc.sel_dontScroll);
+        selection_updates.setSelection(this, m_selection.simpleSelection(start), m_misc.sel_dontScroll);
     };
-    Doc.prototype = misc.createObj(chunk.BranchChunk.prototype, {
+    Doc.prototype = m_misc.createObj(chunk.BranchChunk.prototype, {
         constructor: Doc,
         iter: function (from, to, op) {
             if (op)
@@ -66,31 +66,31 @@ define([
             this.removeInner(at - this.first, n);
         },
         getValue: function (lineSep) {
-            let lines = utils_line.getLines(this, this.first, this.first + this.size);
+            let lines = m_utils_line.getLines(this, this.first, this.first + this.size);
             if (lineSep === false)
                 return lines;
             return lines.join(lineSep || this.lineSeparator());
         },
-        setValue: operations.docMethodOp(function (code) {
+        setValue: m_operations.docMethodOp(function (code) {
             let top = m_pos.Pos(this.first, 0), last = this.first + this.size - 1;
-            changes.makeChange(this, {
+            m_changes.makeChange(this, {
                 from: top,
-                to: m_pos.Pos(last, utils_line.getLine(this, last).text.length),
+                to: m_pos.Pos(last, m_utils_line.getLine(this, last).text.length),
                 text: this.splitLines(code),
                 origin: 'setValue',
                 full: true
             }, true);
             if (this.cm)
-                scrolling.scrollToCoords(this.cm, 0, 0);
-            selection_updates.setSelection(this, m_selection.simpleSelection(top), misc.sel_dontScroll);
+                m_scrolling.scrollToCoords(this.cm, 0, 0);
+            selection_updates.setSelection(this, m_selection.simpleSelection(top), m_misc.sel_dontScroll);
         }),
         replaceRange: function (code, from, to, origin) {
             from = m_pos.clipPos(this, from);
             to = to ? m_pos.clipPos(this, to) : from;
-            changes.replaceRange(this, code, from, to, origin);
+            m_changes.replaceRange(this, code, from, to, origin);
         },
         getRange: function (from, to, lineSep) {
-            let lines = utils_line.getBetween(this, m_pos.clipPos(this, from), m_pos.clipPos(this, to));
+            let lines = m_utils_line.getBetween(this, m_pos.clipPos(this, from), m_pos.clipPos(this, to));
             if (lineSep === false)
                 return lines;
             return lines.join(lineSep || this.lineSeparator());
@@ -100,16 +100,16 @@ define([
             return l && l.text;
         },
         getLineHandle: function (line) {
-            if (utils_line.isLine(this, line))
-                return utils_line.getLine(this, line);
+            if (m_utils_line.isLine(this, line))
+                return m_utils_line.getLine(this, line);
         },
         getLineNumber: function (line) {
-            return utils_line.lineNo(line);
+            return m_utils_line.lineNo(line);
         },
         getLineHandleVisualStart: function (line) {
             if (typeof line == 'number')
-                line = utils_line.getLine(this, line);
-            return spans.visualLine(line);
+                line = m_utils_line.getLine(this, line);
+            return m_spans.visualLine(line);
         },
         lineCount: function () {
             return this.size;
@@ -141,23 +141,23 @@ define([
         somethingSelected: function () {
             return this.sel.somethingSelected();
         },
-        setCursor: operations.docMethodOp(function (line, ch, options) {
+        setCursor: m_operations.docMethodOp(function (line, ch, options) {
             selection_updates.setSimpleSelection(this, m_pos.clipPos(this, typeof line == 'number' ? m_pos.Pos(line, ch || 0) : line), null, options);
         }),
-        setSelection: operations.docMethodOp(function (anchor, head, options) {
+        setSelection: m_operations.docMethodOp(function (anchor, head, options) {
             selection_updates.setSimpleSelection(this, m_pos.clipPos(this, anchor), m_pos.clipPos(this, head || anchor), options);
         }),
-        extendSelection: operations.docMethodOp(function (head, other, options) {
+        extendSelection: m_operations.docMethodOp(function (head, other, options) {
             selection_updates.extendSelection(this, m_pos.clipPos(this, head), other && m_pos.clipPos(this, other), options);
         }),
-        extendSelections: operations.docMethodOp(function (heads, options) {
+        extendSelections: m_operations.docMethodOp(function (heads, options) {
             selection_updates.extendSelections(this, m_pos.clipPosArray(this, heads), options);
         }),
-        extendSelectionsBy: operations.docMethodOp(function (f, options) {
-            let heads = misc.map(this.sel.ranges, f);
+        extendSelectionsBy: m_operations.docMethodOp(function (f, options) {
+            let heads = m_misc.map(this.sel.ranges, f);
             selection_updates.extendSelections(this, m_pos.clipPosArray(this, heads), options);
         }),
-        setSelections: operations.docMethodOp(function (ranges, primary, options) {
+        setSelections: m_operations.docMethodOp(function (ranges, primary, options) {
             if (!ranges.length)
                 return;
             let out = [];
@@ -167,7 +167,7 @@ define([
                 primary = Math.min(ranges.length - 1, this.sel.primIndex);
             selection_updates.setSelection(this, m_selection.normalizeSelection(this.cm, out, primary), options);
         }),
-        addSelection: operations.docMethodOp(function (anchor, head, options) {
+        addSelection: m_operations.docMethodOp(function (anchor, head, options) {
             let ranges = this.sel.ranges.slice(0);
             ranges.push(new m_selection.Range(m_pos.clipPos(this, anchor), m_pos.clipPos(this, head || anchor)));
             selection_updates.setSelection(this, m_selection.normalizeSelection(this.cm, ranges, ranges.length - 1), options);
@@ -175,7 +175,7 @@ define([
         getSelection: function (lineSep) {
             let ranges = this.sel.ranges, lines;
             for (let i = 0; i < ranges.length; i++) {
-                let sel = utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
+                let sel = m_utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
                 lines = lines ? lines.concat(sel) : sel;
             }
             if (lineSep === false)
@@ -186,7 +186,7 @@ define([
         getSelections: function (lineSep) {
             let parts = [], ranges = this.sel.ranges;
             for (let i = 0; i < ranges.length; i++) {
-                let sel = utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
+                let sel = m_utils_line.getBetween(this, ranges[i].from(), ranges[i].to());
                 if (lineSep !== false)
                     sel = sel.join(lineSep || this.lineSeparator());
                 parts[i] = sel;
@@ -199,7 +199,7 @@ define([
                 dup[i] = code;
             this.replaceSelections(dup, collapse, origin || '+input');
         },
-        replaceSelections: operations.docMethodOp(function (code, collapse, origin) {
+        replaceSelections: m_operations.docMethodOp(function (code, collapse, origin) {
             let changes = [], sel = this.sel;
             for (let i = 0; i < sel.ranges.length; i++) {
                 let range = sel.ranges[i];
@@ -212,23 +212,23 @@ define([
             }
             let newSel = collapse && collapse != 'end' && change_measurement.computeReplacedSel(this, changes, collapse);
             for (let i = changes.length - 1; i >= 0; i--)
-                changes.makeChange(this, changes[i]);
+                m_changes.makeChange(this, changes[i]);
             if (newSel)
                 selection_updates.setSelectionReplaceHistory(this, newSel);
             else if (this.cm)
-                scrolling.ensureCursorVisible(this.cm);
+                m_scrolling.ensureCursorVisible(this.cm);
         }),
-        undo: operations.docMethodOp(function () {
-            changes.makeChangeFromHistory(this, 'undo');
+        undo: m_operations.docMethodOp(function () {
+            m_changes.makeChangeFromHistory(this, 'undo');
         }),
-        redo: operations.docMethodOp(function () {
-            changes.makeChangeFromHistory(this, 'redo');
+        redo: m_operations.docMethodOp(function () {
+            m_changes.makeChangeFromHistory(this, 'redo');
         }),
-        undoSelection: operations.docMethodOp(function () {
-            changes.makeChangeFromHistory(this, 'undo', true);
+        undoSelection: m_operations.docMethodOp(function () {
+            m_changes.makeChangeFromHistory(this, 'undo', true);
         }),
-        redoSelection: operations.docMethodOp(function () {
-            changes.makeChangeFromHistory(this, 'redo', true);
+        redoSelection: m_operations.docMethodOp(function () {
+            m_changes.makeChangeFromHistory(this, 'redo', true);
         }),
         setExtending: function (val) {
             this.extend = val;
@@ -274,21 +274,21 @@ define([
             hist.done = m_history.copyHistoryArray(histData.done.slice(0), null, true);
             hist.undone = m_history.copyHistoryArray(histData.undone.slice(0), null, true);
         },
-        setGutterMarker: operations.docMethodOp(function (line, gutterID, value) {
-            return changes.changeLine(this, line, 'gutter', line => {
+        setGutterMarker: m_operations.docMethodOp(function (line, gutterID, value) {
+            return m_changes.changeLine(this, line, 'gutter', line => {
                 let markers = line.gutterMarkers || (line.gutterMarkers = {});
                 markers[gutterID] = value;
-                if (!value && misc.isEmpty(markers))
+                if (!value && m_misc.isEmpty(markers))
                     line.gutterMarkers = null;
                 return true;
             });
         }),
-        clearGutter: operations.docMethodOp(function (gutterID) {
+        clearGutter: m_operations.docMethodOp(function (gutterID) {
             this.iter(line => {
                 if (line.gutterMarkers && line.gutterMarkers[gutterID]) {
-                    changes.changeLine(this, line, 'gutter', () => {
+                    m_changes.changeLine(this, line, 'gutter', () => {
                         line.gutterMarkers[gutterID] = null;
-                        if (misc.isEmpty(line.gutterMarkers))
+                        if (m_misc.isEmpty(line.gutterMarkers))
                             line.gutterMarkers = null;
                         return true;
                     });
@@ -298,14 +298,14 @@ define([
         lineInfo: function (line) {
             let n;
             if (typeof line == 'number') {
-                if (!utils_line.isLine(this, line))
+                if (!m_utils_line.isLine(this, line))
                     return null;
                 n = line;
-                line = utils_line.getLine(this, line);
+                line = m_utils_line.getLine(this, line);
                 if (!line)
                     return null;
             } else {
-                n = utils_line.lineNo(line);
+                n = m_utils_line.lineNo(line);
                 if (n == null)
                     return null;
             }
@@ -320,20 +320,20 @@ define([
                 widgets: line.widgets
             };
         },
-        addLineClass: operations.docMethodOp(function (handle, where, cls) {
-            return changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
+        addLineClass: m_operations.docMethodOp(function (handle, where, cls) {
+            return m_changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
                 let prop = where == 'text' ? 'textClass' : where == 'background' ? 'bgClass' : where == 'gutter' ? 'gutterClass' : 'wrapClass';
                 if (!line[prop])
                     line[prop] = cls;
-                else if (dom.classTest(cls).test(line[prop]))
+                else if (m_dom.classTest(cls).test(line[prop]))
                     return false;
                 else
                     line[prop] += ' ' + cls;
                 return true;
             });
         }),
-        removeLineClass: operations.docMethodOp(function (handle, where, cls) {
-            return changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
+        removeLineClass: m_operations.docMethodOp(function (handle, where, cls) {
+            return m_changes.changeLine(this, handle, where == 'gutter' ? 'gutter' : 'class', line => {
                 let prop = where == 'text' ? 'textClass' : where == 'background' ? 'bgClass' : where == 'gutter' ? 'gutterClass' : 'wrapClass';
                 let cur = line[prop];
                 if (!cur)
@@ -341,7 +341,7 @@ define([
                 else if (cls == null)
                     line[prop] = null;
                 else {
-                    let found = cur.match(dom.classTest(cls));
+                    let found = cur.match(m_dom.classTest(cls));
                     if (!found)
                         return false;
                     let end = found.index + found[0].length;
@@ -350,7 +350,7 @@ define([
                 return true;
             });
         }),
-        addLineWidget: operations.docMethodOp(function (handle, node, options) {
+        addLineWidget: m_operations.docMethodOp(function (handle, node, options) {
             return line_widget.addLineWidget(this, handle, node, options);
         }),
         removeLineWidget: function (widget) {
@@ -372,7 +372,7 @@ define([
         },
         findMarksAt: function (pos) {
             pos = m_pos.clipPos(this, pos);
-            let markers = [], spans = utils_line.getLine(this, pos.line).markedSpans;
+            let markers = [], spans = m_utils_line.getLine(this, pos.line).markedSpans;
             if (spans)
                 for (let i = 0; i < spans.length; ++i) {
                     let span = spans[i];
@@ -433,7 +433,7 @@ define([
             return index;
         },
         copy: function (copyHistory) {
-            let doc = new Doc(utils_line.getLines(this, this.first, this.first + this.size), this.modeOption, this.first, this.lineSep, this.direction);
+            let doc = new Doc(m_utils_line.getLines(this, this.first, this.first + this.size), this.modeOption, this.first, this.lineSep, this.direction);
             doc.scrollTop = this.scrollTop;
             doc.scrollLeft = this.scrollLeft;
             doc.sel = this.sel;
@@ -452,7 +452,7 @@ define([
                 from = options.from;
             if (options.to != null && options.to < to)
                 to = options.to;
-            let copy = new Doc(utils_line.getLines(this, from, to), options.mode || this.modeOption, from, this.lineSep, this.direction);
+            let copy = new Doc(m_utils_line.getLines(this, from, to), options.mode || this.modeOption, from, this.lineSep, this.direction);
             if (options.sharedHist)
                 copy.history = this.history;
             (this.linked || (this.linked = [])).push({
@@ -501,12 +501,12 @@ define([
         splitLines: function (str) {
             if (this.lineSep)
                 return str.split(this.lineSep);
-            return feature_detection.splitLinesAuto(str);
+            return m_feature_detection.splitLinesAuto(str);
         },
         lineSeparator: function () {
             return this.lineSep || '\n';
         },
-        setDirection: operations.docMethodOp(function (dir) {
+        setDirection: m_operations.docMethodOp(function (dir) {
             if (dir != 'rtl')
                 dir = 'ltr';
             if (dir == this.direction)
