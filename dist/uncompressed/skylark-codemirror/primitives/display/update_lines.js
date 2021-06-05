@@ -3,8 +3,12 @@ define([
     '../line/utils_line',
     '../measurement/position_measurement',
     '../util/browser'
-], function (spans, utils_line, c, browser) {
+], function (spans, utils_line, position_measurement, browser) {
     'use strict';
+
+
+    // Read the actual heights of the rendered lines, and update their
+    // stored heights to match.
     function updateHeightsInViewport(cm) {
         let display = cm.display;
         let prevBottom = display.lineDiv.offsetTop;
@@ -41,6 +45,9 @@ define([
             }
         }
     }
+
+    // Read and store the height of line widgets associated with the
+    // given line.
     function updateWidgetHeight(line) {
         if (line.widgets)
             for (let i = 0; i < line.widgets.length; ++i) {
@@ -49,6 +56,10 @@ define([
                     w.height = parent.offsetHeight;
             }
     }
+
+    // Compute the lines that are visible in a given viewport (defaults
+    // the the current scroll position). viewport may contain top,
+    // height, and ensure (see op.scrollToPos) properties.
     function visibleLines(display, doc, viewport) {
         let top = viewport && viewport.top != null ? Math.max(0, viewport.top) : display.scroller.scrollTop;
         top = Math.floor(top - position_measurement.paddingTop(display));

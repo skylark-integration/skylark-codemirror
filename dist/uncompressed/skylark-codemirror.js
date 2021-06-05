@@ -2385,8 +2385,13 @@ define('skylark-codemirror/primitives/display/update_line',[
     '../util/browser',
     '../util/dom',
     '../util/operation_group'
-], function (line_data, utils_line, browser, dom, operation_group) {
+], function (m_line_data, m_utils_line, m_browser, m_dom, m_operation_group) {
+
     'use strict';
+
+    // When an aspect of a line changes, a string is added to
+    // lineView.changes. This updates the relevant part of the line's
+    // DOM structure.
     function updateLineForChanges(cm, lineView, lineN, dims) {
         for (let j = 0; j < lineView.changes.length; j++) {
             let type = lineView.changes[j];
@@ -2403,11 +2408,11 @@ define('skylark-codemirror/primitives/display/update_line',[
     }
     function ensureLineWrapped(lineView) {
         if (lineView.node == lineView.text) {
-            lineView.node = dom.elt('div', null, null, 'position: relative');
+            lineView.node = m_dom.elt('div', null, null, 'position: relative');
             if (lineView.text.parentNode)
                 lineView.text.parentNode.replaceChild(lineView.node, lineView.text);
             lineView.node.appendChild(lineView.text);
-            if (browser.ie && browser.ie_version < 8)
+            if (m_browser.ie && m_browser.ie_version < 8)
                 lineView.node.style.zIndex = 2;
         }
         return lineView.node;
@@ -2425,7 +2430,7 @@ define('skylark-codemirror/primitives/display/update_line',[
             }
         } else if (cls) {
             let wrap = ensureLineWrapped(lineView);
-            lineView.background = wrap.insertBefore(dom.elt('div', null, cls), wrap.firstChild);
+            lineView.background = wrap.insertBefore(m_dom.elt('div', null, cls), wrap.firstChild);
             cm.display.input.setUneditable(lineView.background);
         }
     }
@@ -2436,7 +2441,7 @@ define('skylark-codemirror/primitives/display/update_line',[
             lineView.measure = ext.measure;
             return ext.built;
         }
-        return line_data.buildLineContent(cm, lineView);
+        return m_line_data.buildLineContent(cm, lineView);
     }
     function updateLineText(cm, lineView) {
         let cls = lineView.text.className;
@@ -2473,25 +2478,25 @@ define('skylark-codemirror/primitives/display/update_line',[
         }
         if (lineView.line.gutterClass) {
             let wrap = ensureLineWrapped(lineView);
-            lineView.gutterBackground = dom.elt('div', null, 'CodeMirror-gutter-background ' + lineView.line.gutterClass, `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px; width: ${ dims.gutterTotalWidth }px`);
+            lineView.gutterBackground = m_dom.elt('div', null, 'CodeMirror-gutter-background ' + lineView.line.gutterClass, `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px; width: ${ dims.gutterTotalWidth }px`);
             cm.display.input.setUneditable(lineView.gutterBackground);
             wrap.insertBefore(lineView.gutterBackground, lineView.text);
         }
         let markers = lineView.line.gutterMarkers;
         if (cm.options.lineNumbers || markers) {
             let wrap = ensureLineWrapped(lineView);
-            let gutterWrap = lineView.gutter = dom.elt('div', null, 'CodeMirror-gutter-wrapper', `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px`);
+            let gutterWrap = lineView.gutter = m_dom.elt('div', null, 'CodeMirror-gutter-wrapper', `left: ${ cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth }px`);
             cm.display.input.setUneditable(gutterWrap);
             wrap.insertBefore(gutterWrap, lineView.text);
             if (lineView.line.gutterClass)
                 gutterWrap.className += ' ' + lineView.line.gutterClass;
             if (cm.options.lineNumbers && (!markers || !markers['CodeMirror-linenumbers']))
-                lineView.lineNumber = gutterWrap.appendChild(dom.elt('div', utils_line.lineNumberFor(cm.options, lineN), 'CodeMirror-linenumber CodeMirror-gutter-elt', `left: ${ dims.gutterLeft['CodeMirror-linenumbers'] }px; width: ${ cm.display.lineNumInnerWidth }px`));
+                lineView.lineNumber = gutterWrap.appendChild(m_dom.elt('div', m_utils_line.lineNumberFor(cm.options, lineN), 'CodeMirror-linenumber CodeMirror-gutter-elt', `left: ${ dims.gutterLeft['CodeMirror-linenumbers'] }px; width: ${ cm.display.lineNumInnerWidth }px`));
             if (markers)
                 for (let k = 0; k < cm.options.gutters.length; ++k) {
                     let id = cm.options.gutters[k], found = markers.hasOwnProperty(id) && markers[id];
                     if (found)
-                        gutterWrap.appendChild(dom.elt('div', [found], 'CodeMirror-gutter-elt', `left: ${ dims.gutterLeft[id] }px; width: ${ dims.gutterWidth[id] }px`));
+                        gutterWrap.appendChild(m_dom.elt('div', [found], 'CodeMirror-gutter-elt', `left: ${ dims.gutterLeft[id] }px; width: ${ dims.gutterWidth[id] }px`));
                 }
         }
     }
@@ -2528,7 +2533,7 @@ define('skylark-codemirror/primitives/display/update_line',[
             return;
         let wrap = ensureLineWrapped(lineView);
         for (let i = 0, ws = line.widgets; i < ws.length; ++i) {
-            let widget = ws[i], node = dom.elt('div', [widget.node], 'CodeMirror-linewidget');
+            let widget = ws[i], node = m_dom.elt('div', [widget.node], 'CodeMirror-linewidget');
             if (!widget.handleMouseEvents)
                 node.setAttribute('cm-ignore-events', 'true');
             positionLineWidget(widget, node, lineView, dims);
@@ -2537,7 +2542,7 @@ define('skylark-codemirror/primitives/display/update_line',[
                 wrap.insertBefore(node, lineView.gutter || lineView.text);
             else
                 wrap.appendChild(node);
-            operation_group.signalLater(widget, 'redraw');
+            m_operation_group.signalLater(widget, 'redraw');
         }
     }
     function positionLineWidget(widget, node, lineView, dims) {
@@ -3520,8 +3525,12 @@ define('skylark-codemirror/primitives/display/update_lines',[
     '../line/utils_line',
     '../measurement/position_measurement',
     '../util/browser'
-], function (spans, utils_line, c, browser) {
+], function (spans, utils_line, position_measurement, browser) {
     'use strict';
+
+
+    // Read the actual heights of the rendered lines, and update their
+    // stored heights to match.
     function updateHeightsInViewport(cm) {
         let display = cm.display;
         let prevBottom = display.lineDiv.offsetTop;
@@ -3558,6 +3567,9 @@ define('skylark-codemirror/primitives/display/update_lines',[
             }
         }
     }
+
+    // Read and store the height of line widgets associated with the
+    // given line.
     function updateWidgetHeight(line) {
         if (line.widgets)
             for (let i = 0; i < line.widgets.length; ++i) {
@@ -3566,6 +3578,10 @@ define('skylark-codemirror/primitives/display/update_lines',[
                     w.height = parent.offsetHeight;
             }
     }
+
+    // Compute the lines that are visible in a given viewport (defaults
+    // the the current scroll position). viewport may contain top,
+    // height, and ensure (see op.scrollToPos) properties.
     function visibleLines(display, doc, viewport) {
         let top = viewport && viewport.top != null ? Math.max(0, viewport.top) : display.scroller.scrollTop;
         top = Math.floor(top - position_measurement.paddingTop(display));
