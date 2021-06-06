@@ -1,1 +1,1 @@
-{"version":3,"sources":["main.js"],"names":["define","cm"],"mappings":";;;;;;;AAAAA,QACC,OACG,gBACF,SAASC,GAEV,OAAOA","file":"../main.js","sourcesContent":["define([\r\n\t\"./cm\",\r\n    \"./CodeMirror\"\r\n],function(cm){\r\n\r\n\treturn cm;\r\n});"]}
+{"version":3,"sources":["main.js"],"names":["define","CodeMirror"],"mappings":";;;;;;;AAAAA,QACI,gBACF,SAASC,GAEV,OAAOA","file":"../main.js","sourcesContent":["define([\r\n    \"./CodeMirror\"\r\n],function(CodeMirror){\r\n\r\n\treturn CodeMirror;\r\n});"]}

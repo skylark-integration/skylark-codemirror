@@ -1,9 +1,0 @@
-/**
- * skylark-codemirror - A version of codemirror 5.45  that ported to running on skylarkjs
- * @author Hudaokeji, Inc.
- * @version v0.9.0
- * @link https://github.com/skylark-integration/skylark-codemirror/
- * @license MIT
- */
-define(["../util/browser","../util/event","./update_display","./scrolling"],function(e,l,t,r){"use strict";let i=0,a=null;function o(e){let l=e.wheelDeltaX,t=e.wheelDeltaY;return null==l&&e.detail&&e.axis==e.HORIZONTAL_AXIS&&(l=e.detail),null==t&&e.detail&&e.axis==e.VERTICAL_AXIS?t=e.detail:null==t&&(t=e.wheelDelta),{x:l,y:t}}return e.ie?a=-.53:e.gecko?a=15:e.chrome?a=-.7:e.safari&&(a=-1/3),{wheelEventPixels:function(e){let l=o(e);return l.x*=a,l.y*=a,l},onScrollWheel:function(n,h){let c=o(h),u=c.x,s=c.y,w=n.display,f=w.scroller,p=f.scrollWidth>f.clientWidth,d=f.scrollHeight>f.clientHeight;if(u&&p||s&&d){if(s&&e.mac&&e.webkit)e:for(let e=h.target,l=w.view;e!=f;e=e.parentNode)for(let t=0;t<l.length;t++)if(l[t].node==e){n.display.currentWheelTarget=e;break e}if(u&&!e.gecko&&!e.presto&&null!=a)return s&&d&&r.updateScrollTop(n,Math.max(0,f.scrollTop+s*a)),r.setScrollLeft(n,Math.max(0,f.scrollLeft+u*a)),(!s||s&&d)&&l.e_preventDefault(h),void(w.wheelStartX=null);if(s&&null!=a){let e=s*a,l=n.doc.scrollTop,r=l+w.wrapper.clientHeight;e<0?l=Math.max(0,l+e-50):r=Math.min(n.doc.height,r+e+50),t.updateDisplaySimple(n,{top:l,bottom:r})}i<20&&(null==w.wheelStartX?(w.wheelStartX=f.scrollLeft,w.wheelStartY=f.scrollTop,w.wheelDX=u,w.wheelDY=s,setTimeout(()=>{if(null==w.wheelStartX)return;let e=f.scrollLeft-w.wheelStartX,l=f.scrollTop-w.wheelStartY,t=l&&w.wheelDY&&l/w.wheelDY||e&&w.wheelDX&&e/w.wheelDX;w.wheelStartX=w.wheelStartY=null,t&&(a=(a*i+t)/(i+1),++i)},200)):(w.wheelDX+=u,w.wheelDY+=s))}}}});
-//# sourceMappingURL=../../sourcemaps/primitives/display/scroll_events.js.map

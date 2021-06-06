@@ -1,7 +1,6 @@
 define([
-	'./cm',
-	'./primitives/edit/main'
-], function (cm,_main) {
+	'skylark-codemirror-base'
+], function (CodeMirror) {
     'use strict';
-    return cm.CodeMirror = _main.CodeMirror;
+    return CodeMirror;
 });

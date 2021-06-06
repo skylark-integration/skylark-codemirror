@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-codemirror/
  * @license MIT
  */
-define(["./cm","./CodeMirror"],function(r){return r});
+define(["./CodeMirror"],function(r){return r});
 //# sourceMappingURL=sourcemaps/main.js.map

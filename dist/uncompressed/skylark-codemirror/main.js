@@ -1,7 +1,6 @@
 define([
-	"./cm",
     "./CodeMirror"
-],function(cm){
+],function(CodeMirror){
 
-	return cm;
+	return CodeMirror;
 });
