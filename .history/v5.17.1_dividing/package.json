@@ -25,9 +25,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "skylark-langx": "https://github.com/skylarklangx/skylark-langx#master",
-    "skylark-utils": "https://github.com/skylarkutils/skylark-utils#master",
-    "skylark-ui-swt": "https://github.com/skylarkui/skylark-ui-swt#master"
+    "skylark-langx": "https://github.com/skylarklangx/skylark-langx",
+    "skylark-utils": "https://github.com/skylarkutils/skylark-utils",
+    "skylark-ui-swt": "https://github.com/skylarkui/skylark-ui-swt"
   },
   "engines": {
     "node": ">=0.10.1"
