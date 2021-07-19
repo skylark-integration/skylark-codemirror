@@ -31,8 +31,8 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "skylark-langx": "git+https://github.com/skylark-langx/skylark-langx.git",
-    "skylark-codemirror-base": "git+https://github.com/skylark-integration/skylark-codemirror-base.git"
+    "skylark-codemirror-base": "git+https://github.com/skylark-integration/skylark-codemirror-base.git",
+    "skylark-langx": "git+https://github.com/skylark-langx/skylark-langx.git"
   },
   "engines": {
     "node": ">=0.10.1"
